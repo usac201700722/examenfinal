@@ -129,6 +129,7 @@ class hiloTCP(object):
         SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
         BUFFER_SIZE = 64 * 1024 
+        
         nose=b'\x02$201700722'
         client.publish("comandos/08/201700722",nose,2,False)
         server_socket = socket.socket()
@@ -197,6 +198,7 @@ comandos.subComandos()
 #Iniciamos el thread (implementado en paho-mqtt) para estar atentos a mensajes en los topics subscritos
 client.loop_start()	#COn esto hacemos que las sub funcionen
 #El thread de MQTT queda en el fondo, mientras en el main loop hacemos otra cosa
+
 time.sleep(5)
 try:
     while True:
