@@ -8,11 +8,52 @@ import sys       #Requerido para salir (sys.exit())
 import threading #Concurrencia con hilos
 from brokerdata import * #Informacion de la conexion
 from comandos import *
+from encriptado import *
 
+PASSWORD = "hola"
 USER_FILENAME ='usuario'
 SALAS_FILENAME = 'salas'
 DEFAULT_DELAY = 2
 dato=b'\x01$000'
+
+class MQTTconfig(paho.Client):
+    def on_connect(self, client, userdata, flags, rc):
+        #SALU Handler en caso suceda la conexion con el broker MQTT
+        connectionText = "CONNACK recibido del broker con codigo: " + str(rc)
+        logging.debug(connectionText)
+    def on_publish(self, client, userdata, mid): 
+        #SALU Handler en caso se publique satisfactoriamente en el broker MQTT
+        publishText = "Publicacion satisfactoria"
+        logging.debug(publishText)
+    def on_message(self, client, userdata, msg):	
+        #SALU Callback que se ejecuta cuando llega un mensaje al topic suscrito
+        #SALU msg contiene el topic y la info que llego
+        #SALU Se muestra en pantalla informacion que ha llegado
+        if str(msg.topic)=="comandos/08/201700722":
+            global dato 
+            dato = msg.payload
+            logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
+            logging.info("El contenido del mensaje es: " + str(msg.payload))#que vino en el mss
+            comandos_funcion(dato)
+        else:
+            mensaje_chat= msg.payload
+            logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
+            logging.info("El contenido del mensaje es: " + str(mensaje_chat.decode('utf-8')))#que vino en el mss
+
+            
+    def on_subscribe(self, client, obj,mid, qos):
+        #SALU Handler en caso se suscriba satisfactoriamente en el broker MQTT
+        logging.debug("Suscripcion satisfactoria")
+
+    def run(self):
+        #SALU este metodo inicializa la conexion MQTT con las credenciales del broker
+        self.username_pw_set(MQTT_USER, MQTT_PASS)
+        self.connect(host=MQTT_HOST, port = MQTT_PORT)        
+        rc = 0
+        while rc==0:
+            rc = self.loop_start()
+        return rc
+
 
 class configuracionCLiente(object):
     def __init__(self,filename='', qos=2):
@@ -100,6 +141,7 @@ class hiloTCP(object):
         server_address = (self.SERVER_IP, SERVER_PORT)
         print('Conectando a {} en el puerto {}'.format(*server_address))
         sock.connect(server_address)
+        
         try:
             archivo = open('ultimoAudio.wav','rb')
             print("Enviando...")
@@ -130,14 +172,15 @@ class hiloTCP(object):
             while buff:
                 buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
                 archivo.write(buff)
-
             archivo.close() #Se cierra el archivo
-
             print("Recepcion de archivo finalizada")
 
         finally:
             print('Conexion al servidor finalizada')
             sock.close() #Se cierra el socket
+
+        #Desencriptar(getkey(PASSWORD),"recibido.wav")
+        os.system('aplay recibido.wav')
 
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
@@ -156,43 +199,11 @@ logging.basicConfig(
     format = '[%(levelname)s] (%(processName)-10s) %(message)s'
     ) 
 
-#Handler en caso suceda la conexion con el broker MQTT
-def on_connect(client, userdata, flags, rc): 
-    connectionText = "CONNACK recibido del broker con codigo: " + str(rc)
-    logging.debug(connectionText)
-
-#Handler en caso se publique satisfactoriamente en el broker MQTT
-def on_publish(client, userdata, mid): 
-    publishText = "Publicacion satisfactoria"
-    logging.debug(publishText)
-
-#Callback que se ejecuta cuando llega un mensaje al topic suscrito
-def on_message(client, userdata, msg):	#msg contiene el topic y la info que llego
-    #Se muestra en pantalla informacion que ha llegado
-    if str(msg.topic)=="comandos/08/201700722":
-        global dato 
-        dato = msg.payload
-        logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
-        logging.info("El contenido del mensaje es: " + str(msg.payload))#que vino en el mss
-        comandos_funcion(dato)
-    else:
-        mensaje_chat= msg.payload
-        logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
-        logging.info("El contenido del mensaje es: " + str(mensaje_chat.decode('utf-8')))#que vino en el mss
-
-
 logging.info("Cliente MQTT con paho-mqtt") #Mensaje en consola
 
-'''
-Config. inicial del cliente MQTT
-'''
-client = paho.Client(clean_session=True) #Nueva instancia de cliente
-client.on_connect = on_connect #Se configura la funcion "Handler" cuando suceda la conexion
-client.on_publish = on_publish #Se configura la funcion "Handler" que se activa al publicar algo
-client.on_message = on_message
-client.username_pw_set(MQTT_USER, MQTT_PASS) #Credenciales requeridas por el broker
-client.connect(host=MQTT_HOST, port = MQTT_PORT) #Conectar al servidor remoto
-
+#SALU Iniciamos la configuracion del cliente MQTT
+client = MQTTconfig(clean_session=True)
+rc = client.run()   #SALU Corre la congiduracion 
 
 #************* Suscripciones del cliente *********
 comandos= configuracionCLiente(USER_FILENAME,2)
@@ -232,8 +243,6 @@ try:
         elif comando == "2a":
             topic_send = input("Ingrese el usuario al que desea enviar el audio (Ej: '201700376', sin comillas): ")
             duracion = int(input("Ingrese la duracion del audio en segundos: (Max. 30 seg)"))
-            #grabar = hilos(duracion)
-            #grabar.hiloGrabar.start()
             if duracion<=30:
                 grabador = str("arecord -d "+str(duracion)+" -f U8 -r 8000 ultimoAudio.wav")
                 logging.info('Comenzando la grabación')
@@ -243,6 +252,7 @@ try:
                 mensaje = comandosCliente(topic_send)
                 print(mensaje.fileTransfer(size))
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
+                #Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
                 time.sleep(10)
                 conexion= hiloTCP(SERVER_IP)
                 conexion.hiloConexion.start()
