@@ -143,7 +143,7 @@ class hiloTCP(object):
         sock.connect(server_address)
         
         try:
-            archivo = open('ultimoAudio.wav','rb')
+            archivo = open('EultimoAudio.wav','rb')
             print("Enviando...")
             l=archivo.read(BUFFER_SIZE)
             while l:
@@ -179,8 +179,8 @@ class hiloTCP(object):
             print('Conexion al servidor finalizada')
             sock.close() #Se cierra el socket
 
-        #Desencriptar(getkey(PASSWORD),"recibido.wav")
-        os.system('aplay recibido.wav')
+        Desencriptar(getkey(PASSWORD),"recibido.wav")
+        os.system('aplay (D)recibido.wav')
 
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
@@ -252,7 +252,7 @@ try:
                 mensaje = comandosCliente(topic_send)
                 print(mensaje.fileTransfer(size))
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
-                #Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+                Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
                 time.sleep(10)
                 conexion= hiloTCP(SERVER_IP)
                 conexion.hiloConexion.start()

@@ -19,7 +19,7 @@ class configuracionesServidor(object):
         self.filename = filename
         self.qos = qos
 
-
+    
     def subSalas(self):
         datos = []
         archivo = open(self.filename,'r') 
@@ -30,8 +30,8 @@ class configuracionesServidor(object):
         archivo.close() #Cerrar el archivo al finalizar
         for i in datos:
             #client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), qos))
-            logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
-    
+            logging.debug("comandos/"+str(i[0])+"/S"+str(i[1]))
+    '''
     def subUsuarios(self):
         datos = []
         archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
@@ -43,7 +43,7 @@ class configuracionesServidor(object):
         for i in datos:
             client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
             logging.debug("usuarios/08/"+str(i[0]))
-    
+    '''
     def subComandos(self):
         datos = []
         archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
@@ -182,13 +182,16 @@ client.on_publish = on_publish
 client.username_pw_set(MQTT_USER, MQTT_PASS) #Credenciales requeridas por el broker, user y pass
 client.connect(host=MQTT_HOST, port = MQTT_PORT) #Conectar al servidor remoto
 #host es la ip, y el puerto el puerto xD si lo dejamos vacio lo conecta al 1883 (CREO)
+
 first =b'\x01$201700722$4000'
 client.publish("comandos/08/201700722",first,2,False)
 
 #*********** Suscripciones del servidor ******************
 qos = 1
+'''
 user = configuracionesServidor(USER_FILENAME,qos)
 user.subUsuarios()
+'''
 salas = configuracionesServidor(SALAS_FILENAME,qos)
 salas.subSalas()
 comandos = configuracionesServidor(USER_FILENAME,qos)
@@ -202,8 +205,6 @@ client.loop_start()	#COn esto hacemos que las sub funcionen
 time.sleep(5)
 try:
     while True:
-        #logging.debug("El dato ingresado es: "+str(dato.decode('utf-8')))
-        #comandoIn=dato.decode('utf-8')
         comando_accion = comandosServidor(str(dato))
         
         if (comando_accion.separa()[0]=="03"):
