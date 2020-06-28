@@ -24,8 +24,8 @@ class MQTTconfig(paho.Client):
         #SALU Callback que se ejecuta cuando llega un mensaje al topic suscrito
         #SALU msg contiene el topic y la info que llego
         #SALU Se muestra en pantalla informacion que ha llegado
-        topic_usuario="comandos/08/"+str(lista_user[0])
-        if str(msg.topic)==topic_usuario:
+        #topic_usuario="comandos/08/"+str(lista_user[0])
+        if str(msg.topic) in lista_comandos_generales:
             dato = msg.payload
             logging.debug("--------------------------------------------------------------------------")
             logging.debug("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
@@ -99,8 +99,9 @@ class configuracionCLiente(object):
         sal =[]
         for i in datos:
             client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), self.qos))
+            client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), self.qos))
             logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
-            sal.append(str(i[0])+"S"+str(i[1]))
+            sal.append("comandos/"+str(i[0])+"/S"+str(i[1]))
         return sal
 
     def __str__(self):
@@ -314,6 +315,10 @@ lista_sal = salas.subSalas()
 logging.debug(lista_com) #muestra el usuario
 logging.debug(lista_user)
 logging.debug(lista_sal)
+lista_comandos_generales=[]
+lista_comandos_generales.append("comandos/08/"+str(lista_user[0]))
+lista_comandos_generales.extend(lista_sal)
+logging.debug(lista_comandos_generales)
 #***************************************************
 
 hilo_enviar_Alive= hilos(2)
