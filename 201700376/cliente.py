@@ -25,7 +25,6 @@ class MQTTconfig(paho.Client):
         #SALU msg contiene el topic y la info que llego
         #SALU Se muestra en pantalla informacion que ha llegado
         topic_usuario="comandos/08/"+str(lista_user[0])
-        print(topic_usuario)
         if str(msg.topic)==topic_usuario:
             dato = msg.payload
             logging.debug("--------------------------------------------------------------------------")
@@ -139,8 +138,8 @@ class comandosUsuario(object):
                 logging.info('***Grabación finalizada***')
                 size= os.stat('ultimoAudio.wav').st_size
                 mensaje = comandosCliente(topic_send)
-                #print(mensaje.fileTransfer(size))
-                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
+                
+                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
 
             else:
@@ -157,8 +156,7 @@ class comandosUsuario(object):
                 logging.info('***Grabación finalizada***')
                 size= os.stat('ultimoAudio.wav').st_size
                 mensaje = comandosCliente(topic_send)
-                #print(mensaje.fileTransfer(size))
-                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
+                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
