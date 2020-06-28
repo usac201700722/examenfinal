@@ -5,7 +5,7 @@ from Crypto import Random
 
 def Encriptar(key,filename):
     BUFFER_SIZE = 64* 1025
-    outfile = "E"+filename
+    outfile = "Encriptado_"+filename
     filesize = str(os.path.getsize(filename)).zfill(16)
     IV = Random.new().read(16)
 
@@ -26,7 +26,7 @@ def Encriptar(key,filename):
 
 def Desencriptar(key,filename):
     BUFFER_SIZE = 64*1024
-    outputfile = "(D)"+filename         #filename[11:]
+    outputfile = "Desencriptado_"+filename         #filename[11:]
 
     with open(filename, 'rb') as infile:
         filesize =int(infile.read(16))
@@ -49,7 +49,6 @@ def getkey(password):
     return hasher.digest()
 
 '''
-
 def Main():
     choice = input('Que quiere hacer? (D) o (E): ')
 
@@ -68,7 +67,6 @@ def Main():
 
 if __name__ == "__main__":
     Main()
-
 '''
 
                    
