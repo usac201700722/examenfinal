@@ -158,7 +158,7 @@ class hiloTCP(object):
         client.publish("comandos/08/"+str(self.topic),objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
-        server_socket.listen(1)#1 conexion activa y 9 en cola
+        server_socket.listen(10)#1 conexion activa y 9 en cola
         bandera = True
         try:
             while bandera==True:
