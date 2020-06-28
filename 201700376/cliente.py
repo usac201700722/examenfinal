@@ -54,19 +54,25 @@ class MQTTconfig(paho.Client):
         while rc==0:
             rc = self.loop_start()
         return rc
-
+'''
+Comentario y clase hecha por: HANC, La clase configuracionesCLiente se encarga de
+suscribir al cliente en los topics necesarios para la transmision de datos de tal forma
+que sea una suscripcion automatica en base a los archivos usuarios/salas.
+'''
 class configuracionCLiente(object):
+    #HANC Constructor de la clase
     def __init__(self,filename='', qos=2):
         self.filename = filename
         self.qos = qos
 
+    #HANC Suscripcion de comandos de Negociacion
     def subComandos(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         com=[]
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
@@ -74,13 +80,14 @@ class configuracionCLiente(object):
             com.append(i[0])
         return com
     
+    #HANC Suscripcion a la que llegan los mensajes
     def subUsuarios(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         user = []
         for i in datos:
             client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
@@ -88,14 +95,15 @@ class configuracionCLiente(object):
             user.append(i[0])
         return user
 
+    #HANC Suscripcion a las salas del Usuario
     def subSalas(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('S')
             registro[-1] = registro[-1].replace('\n', '')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         sal =[]
         for i in datos:
             client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), self.qos))
@@ -104,6 +112,7 @@ class configuracionCLiente(object):
             sal.append("comandos/"+str(i[0])+"/S"+str(i[1]))
         return sal
 
+    #HANC Representacion de la clase configuracionesCLiente
     def __str__(self):
         datosMQTT="Archivo de datos: "+str(self.filename)+" qos: "+ str(self.qos)
         return datosMQTT
@@ -171,8 +180,13 @@ class comandosUsuario(object):
         #ARMCH hace una peque;a pausa antes de volver a pedir otro comando
         logging.debug("Los datos han sido enviados al broker")            
         time.sleep(DEFAULT_DELAY)
+'''
+Comentario y clase hecho por: HANC La clase hilos se pretende enviar el alive del cliente
+para indicarle al servidor que este esta conectado.
+'''
 
 class hilos(object):
+    #HANC Constructor de la clase hilos
     def __init__(self,tiempo):
         self.tiempo=tiempo
         self.hiloAlive=threading.Thread(name = 'ALIVE',
@@ -180,14 +194,16 @@ class hilos(object):
                         args = (self,self.tiempo),
                         daemon = False
                         )
+
+    #HANC Metodo que envia hilos cada 2 segundos
     def enviarALIVE(self, tiempo=2):
         datos = []
         user = ''
-        archivo = open('usuario','r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open('usuario','r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         for i in datos:
             user = i[0]
         while True:

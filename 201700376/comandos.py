@@ -56,11 +56,14 @@ class comandosCliente(object):
     def __repr__(self):
         return self.__str__
 
+#Comentario y clase hecho por: HANC
 #La clase comandosServidor sirve para obtener la trama recibida del cliente y 
 #separar cada dato como "comando", "ID O SALA" y/o "Tamaño del archivo",
 #aunque la clase se llame comandosServidor no esta limitada solo al servidor
 #Para este caso el cliente tambien hara uso de ella.
+
 class comandosServidor(object):
+    #HANC Metodo constructor de la clase coomandosServidor
     def __init__(self, comando):
         self.comando= str(comando)
     def __str__(self):
@@ -69,7 +72,7 @@ class comandosServidor(object):
         return self.__str__()
     def __len__(self):
         return len(self.comando)
-
+    #HANC Metodo que separa los comandos hechos por el usuario para enviarlos al servidor
     def separa(self):
         lista = []
         separados=[]
@@ -77,8 +80,3 @@ class comandosServidor(object):
         union = str(lista[1])
         separados = union.split("$")
         return separados
-#el \x03 no lo toma en cuenta solo el 3 como al final el comando es ese, o si es 4 y asi
-#sucesivamente entonces ya lo deja separado, luego toma el carnet o la sala y deja de
-#de ultimo el tamaño del archivo, no importando la cantidad de digitos
-# y hay ifs porque uno es si es el cliente osea el carnet o es una sala
-
