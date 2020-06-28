@@ -132,6 +132,19 @@ class hilos(object):
             mensaje = comandosCliente(user)
             client.publish("comandos/08/"+str(user),mensaje.alive(),1,False)
             time.sleep(self.tiempo)
+
+class hiloAudio(object):
+    def __init__(self,mensaje):
+        self.mensaje=mensaje
+        self.hiloRecibidor=threading.Thread(name = 'Guardar nota de voz',
+                        target = hiloAudio.reproducirAudio,
+                        args = (self,self.mensaje),
+                        daemon = False
+                        )
+    def reproducirAudio(self, mensaje):
+        logging.debug(mensaje)       
+        logging.info("Reproduciendo nota de voz...")
+        os.system('aplay Desencriptado_recibidoEncriptado.wav')
  
 class hiloTCP(object):
     def __init__(self, SERVER_IP):
@@ -139,7 +152,7 @@ class hiloTCP(object):
         self.hiloConexion=threading.Thread(name = 'Conexion por TCP',
                         target = hiloTCP.conexionTCP,
                         args = (self,self.SERVER_IP),
-                        daemon = False
+                        daemon = True
                         )
         self.hiloConexionRecibir=threading.Thread(name = 'Recibiendo archivo de audio',
                         target = hiloTCP.conexionTCPrecibir,
@@ -190,15 +203,17 @@ class hiloTCP(object):
                 archivo.write(buff)
                 buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
             archivo.close() #Se cierra el archivo
-            sock.close() #Se cierra el socket
+            #sock.close() #Se cierra el socket
             logging.info("Recepcion de archivo finalizada")
 
         finally:
             logging.debug('Conexion al servidor finalizada')
-            sock.close() #Se cierra el socket
-
-        Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")
-        os.system('aplay Desencriptado_recibidoEncriptado.wav')
+            
+            Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")
+            #os.system('aplay Desencriptado_recibidoEncriptado.wav')
+            sock.close()
+            hilo = hiloAudio("topic")
+            hilo.hiloRecibidor.start()
 
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
@@ -304,9 +319,9 @@ try:
                 print(mensaje.fileTransfer(size))
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
-                time.sleep(10)
-                conexion= hiloTCP(SERVER_IP)
-                conexion.hiloConexion.start()
+                #time.sleep(10)
+                #conexion= hiloTCP(SERVER_IP)
+                #conexion.hiloConexion.start()
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
                 break
