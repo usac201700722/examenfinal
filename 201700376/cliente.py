@@ -1,15 +1,15 @@
-import paho.mqtt.client as paho
-import logging
-import time
-import socket
-import random
-import os
-import sys                  #Requerido para salir (sys.exit())
-import threading            #Concurrencia con hilos
-from brokerdata import *    #Informacion de la conexion
-from comandos import *
-from encriptado import *
-from cifradocesar import *
+import paho.mqtt.client as paho #ARMCH esta libreria nos permite hacer la conexion con broker mqtt
+import logging              #ARMCH libreria para sustituir el print
+import time                 #ARMCH    nos permite hacer pausas de tiempo
+import socket               #ARMCH permite abrir un socket tcp
+import random               #ARMCH nos sirve para generar numeros aleatorios de la encriptacion        
+import os                   #ARMCH sirve para ejecutar comandos de bash en python
+import sys                  #ARMCH Requerido para salir (sys.exit())
+import threading            #ARMCH Concurrencia con hilos
+from brokerdata import *    #ARMCH Informacion de la conexion
+from comandos import *      #ARMCH se encarga de todas las tramas de negociacion
+from encriptado import *    #ARMCH sirve para encriptar los archivos de audio
+from cifradocesar import *  #ARMCH sirve para encriptar los mensajes de texto
 
 class MQTTconfig(paho.Client):
     def on_connect(self, client, userdata, flags, rc):
@@ -120,6 +120,10 @@ class configuracionCLiente(object):
     def __repr__(self):
         return self.__str__
 
+#comentario y clase hecho por ARMCH :
+#esta clase se encarga de procesar las secciones que el usuario ingresa al menu principal
+
+
 class comandosUsuario(object):
     #ARMCH este es el constructor de la clase comandos usuario
     def __init__(self, comando =""):
@@ -211,7 +215,11 @@ class hilos(object):
             client.publish("comandos/08/"+str(user),mensaje.alive(),1,False)
             time.sleep(self.tiempo)
 
+#comentario y clase hecho por ARMCH
+# esta clase sirve para ejecutar un hilo y reproducir un audio que le ingresa al usuario.
 class hiloAudio(object):
+    
+    #ARMCH constructor de la clase
     def __init__(self,mensaje):
         self.mensaje=mensaje
         self.hiloRecibidor=threading.Thread(name = 'Guardar nota de voz',
@@ -219,12 +227,19 @@ class hiloAudio(object):
                         args = (self,self.mensaje),
                         daemon = False
                         )
+    #ARMCH metodo de la clase que reproduce el audio    
     def reproducirAudio(self, mensaje):
         logging.debug(mensaje)       
         logging.info("Reproduciendo nota de voz...")
         os.system('aplay Desencriptado_recibidoEncriptado.wav')
- 
+        
+ # clase y comentario hecho por ARMCH
+ #esta clase consta de dos hilos 
+ #un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
+ #otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
 class hiloTCP(object):
+    #ARMCH constructor de la clase , se definen los dos hilos de la clase
+    
     def __init__(self, SERVER_IP):
         self.SERVER_IP=SERVER_IP
         self.hiloConexion=threading.Thread(name = 'Conexion por TCP',
@@ -237,16 +252,16 @@ class hiloTCP(object):
                         args = (self,self.SERVER_IP),
                         daemon = False
                         )
-
+    #ARMCH este metodo se encarga de enviar la nota de voz del cliente/servidor
     def conexionTCP(self, SERVER_IP):
         self.SERVER_IP   = '167.71.243.238'
         SERVER_PORT = 9808
         BUFFER_SIZE = 64 * 1024
         time.sleep(5)
-        # Se crea socket TCP
+        #ARMCH Se crea socket TCP
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # Se conecta al puerto donde el servidor se encuentra a la escucha
+        #ARMCH Se conecta al puerto donde el servidor se encuentra a la escucha
         server_address = (self.SERVER_IP, SERVER_PORT)
         print('Conectando a {} en el puerto {}'.format(*server_address))
         sock.connect(server_address)
@@ -265,7 +280,8 @@ class hiloTCP(object):
             sock.close()
         except ConnectionRefusedError:
             logging.error("El servidor ha rechazado la conexion, intente hacerlo otra vez")
-  
+    
+    #ARMCH este metodo se encarga de recibir el audio del servidor
     def conexionTCPrecibir(self,SERVER_IP):
         SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
@@ -276,11 +292,11 @@ class hiloTCP(object):
 
         try:
             buff = sock.recv(BUFFER_SIZE)
-            archivo = open('recibidoEncriptado.wav', 'wb') #Aca se guarda el archivo entrante
+            archivo = open('recibidoEncriptado.wav', 'wb') #ARMCH Aca se guarda el archivo entrante
             while buff:
                 archivo.write(buff)
-                buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
-            archivo.close() #Se cierra el archivo
+                buff = sock.recv(BUFFER_SIZE) #ARMCH Los bloques se van agregando al archivo
+            archivo.close() #ARMCH Se cierra el archivo
             #sock.close() #Se cierra el socket
             logging.info("Recepcion de archivo finalizada")
 
@@ -293,6 +309,7 @@ class hiloTCP(object):
             hilo = hiloAudio("topic")
             hilo.hiloRecibidor.start()
 
+#ARMCH aqui se ejecutaran los comandos de negociacion que le entren al cliente
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
     logging.debug("Si entro a la funcion")
