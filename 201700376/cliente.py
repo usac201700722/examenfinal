@@ -233,7 +233,7 @@ class hiloAudio(object):
         logging.info("Reproduciendo nota de voz...")
         os.system('aplay Desencriptado_recibidoEncriptado.wav')
         
- # clase y comentario hecho por ARMCH
+ #clase y comentario hecho por ARMCH
  #esta clase consta de dos hilos 
  #un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
  #otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
@@ -326,19 +326,21 @@ def comandos_funcion(dato_entrada):
     else:
         pass
 
-#Configuracion inicial de logging
+#SALU Configuracion inicial de logging
 logging.basicConfig(
     level = logging.INFO, 
     format = '[%(levelname)s] (%(processName)-10s) %(message)s'
     ) 
 
-logging.info("Cliente MQTT con paho-mqtt") #Mensaje en consola
+logging.info("BIENVENIDOS A WHATSAPPBROS") #SALU Mensaje en consola
 
 #SALU Iniciamos la configuracion del cliente MQTT
 client = MQTTconfig(clean_session=True)
 rc = client.run()   #SALU Corre la configuracion del cliente MQTT
 
-#************* Suscripciones del cliente *********
+#************* Suscripciones del cliente *******************************
+#SALU: en este apartado suscribimos al cliente automaticamente y recopilamos
+#los datos que nos serviran para los mensajes de las tramas que entren
 comandos= configuracionCLiente(USER_FILENAME,2)
 lista_com=comandos.subComandos()
 usuarios = configuracionCLiente(USER_FILENAME,2)
@@ -352,10 +354,10 @@ lista_comandos_generales=[]
 lista_comandos_generales.append("comandos/08/"+str(lista_user[0]))
 lista_comandos_generales.extend(lista_sal)
 logging.debug(lista_comandos_generales)
-#***************************************************
+#************************************************************************
 
 hilo_enviar_Alive= hilos(2)
-#hilo_enviar_Alive.hiloAlive.start()
+#hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
 client.loop_start()
 #Loop principal:
 try:
@@ -376,15 +378,14 @@ try:
         --------------------------------------------------
         ''') 
         
-        #comando = input("Ingrese el comando: ")
         dato_usuario = input("Ingrese el comando: ")    #ARMCH el usuario ingresa un comando
         com=comandosUsuario(dato_usuario)               #ARMCH instancia del objeto instancia usuario
         com.accion()                                    #ARMCH ejecuta las acciones mqtt 
 
 except KeyboardInterrupt:
-    logging.warning("Desconectando del broker MQTT...")
+    logging.warning("Desconectando del broker MQTT...") #SALU da una advertencia al desconectar del broker
 
 finally:
-    client.loop_stop()
-    client.disconnect()
-    logging.info("Se ha desconectado del broker. Saliendo...")
+    client.loop_stop()          #SALU se detiene el loop principal
+    client.disconnect()         #SALU Se desconecta del broker
+    logging.info("Se ha desconectado del broker. Saliendo...")  #SALU mensaje final

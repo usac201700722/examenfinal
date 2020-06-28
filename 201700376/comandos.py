@@ -1,3 +1,4 @@
+#SALU
 #La clase comandosCLiente sirve para realizar las tramas de la negociacion
 #entre cliente y servidor, a pesar que se llame comandosCLiente, no esta limitado
 #solo a cliente, sino que el servidor tambien podra hacer uso de esta clase.
@@ -6,7 +7,7 @@ class comandosCliente(object):
         self.Dest=Dest
         self.SEP= b'$'
 
-    def fileTransfer(self, enviador, File_size=0):
+    def fileTransfer(self, enviador, File_size=0):  #SALU Trama para FTR
         FTR=b'\x03'
         Destino = self.Dest
         Destino=Destino.encode()
@@ -16,13 +17,13 @@ class comandosCliente(object):
         tamArchivo=tamArchivo.encode()
         trama= FTR+self.SEP+Destino+self.SEP+topic_enviador+self.SEP+tamArchivo
         return trama
-    def alive(self):
+    def alive(self):        #SALU Trama para ALIVE
         ALIVE=b'\x04'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= ALIVE+self.SEP+Destino
         return trama
-    def fileReceive(self, File_size=0):
+    def fileReceive(self, File_size=0):     #SALU Trama para FRR
         FRR=b'\x02'
         Destino = self.Dest
         Destino=Destino.encode()
@@ -30,21 +31,21 @@ class comandosCliente(object):
         tamArchivo=tamArchivo.encode()
         trama = FRR+self.SEP+Destino+self.SEP+tamArchivo
         return trama
-    def ack(self):
+    def ack(self):                          #SALU Trama para ACK
         ACK=b'\x05'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= ACK+self.SEP+Destino
         return trama
 
-    def OK(self):
+    def OK(self):                           #SALU Trama para OK
         OKEY=b'\x06'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= OKEY+self.SEP+Destino
         return trama
 
-    def NO(self):
+    def NO(self):                           #SALU Trama para NO
         NEL=b'\x07'
         Destino = self.Dest
         Destino=Destino.encode()

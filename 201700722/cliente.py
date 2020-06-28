@@ -1,15 +1,15 @@
-import paho.mqtt.client as paho
-import logging
-import time
-import socket
-import random
-import os
-import sys                  #Requerido para salir (sys.exit())
-import threading            #Concurrencia con hilos
-from brokerdata import *    #Informacion de la conexion
-from comandos import *
-from encriptado import *
-from cifradocesar import *
+import paho.mqtt.client as paho #ARMCH esta libreria nos permite hacer la conexion con broker mqtt
+import logging              #ARMCH libreria para sustituir el print
+import time                 #ARMCH    nos permite hacer pausas de tiempo
+import socket               #ARMCH permite abrir un socket tcp
+import random               #ARMCH nos sirve para generar numeros aleatorios de la encriptacion        
+import os                   #ARMCH sirve para ejecutar comandos de bash en python
+import sys                  #ARMCH Requerido para salir (sys.exit())
+import threading            #ARMCH Concurrencia con hilos
+from brokerdata import *    #ARMCH Informacion de la conexion
+from comandos import *      #ARMCH se encarga de todas las tramas de negociacion
+from encriptado import *    #ARMCH sirve para encriptar los archivos de audio
+from cifradocesar import *  #ARMCH sirve para encriptar los mensajes de texto
 
 class MQTTconfig(paho.Client):
     def on_connect(self, client, userdata, flags, rc):
@@ -54,19 +54,25 @@ class MQTTconfig(paho.Client):
         while rc==0:
             rc = self.loop_start()
         return rc
-
+'''
+Comentario y clase hecha por: HANC, La clase configuracionesCLiente se encarga de
+suscribir al cliente en los topics necesarios para la transmision de datos de tal forma
+que sea una suscripcion automatica en base a los archivos usuarios/salas.
+'''
 class configuracionCLiente(object):
+    #HANC Constructor de la clase
     def __init__(self,filename='', qos=2):
         self.filename = filename
         self.qos = qos
 
+    #HANC Suscripcion de comandos de Negociacion
     def subComandos(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         com=[]
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
@@ -74,13 +80,14 @@ class configuracionCLiente(object):
             com.append(i[0])
         return com
     
+    #HANC Suscripcion a la que llegan los mensajes
     def subUsuarios(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         user = []
         for i in datos:
             client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
@@ -88,14 +95,15 @@ class configuracionCLiente(object):
             user.append(i[0])
         return user
 
+    #HANC Suscripcion a las salas del Usuario
     def subSalas(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('S')
             registro[-1] = registro[-1].replace('\n', '')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         sal =[]
         for i in datos:
             client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), self.qos))
@@ -104,12 +112,17 @@ class configuracionCLiente(object):
             sal.append("comandos/"+str(i[0])+"/S"+str(i[1]))
         return sal
 
+    #HANC Representacion de la clase configuracionesCLiente
     def __str__(self):
         datosMQTT="Archivo de datos: "+str(self.filename)+" qos: "+ str(self.qos)
         return datosMQTT
 
     def __repr__(self):
         return self.__str__
+
+#comentario y clase hecho por ARMCH :
+#esta clase se encarga de procesar las secciones que el usuario ingresa al menu principal
+
 
 class comandosUsuario(object):
     #ARMCH este es el constructor de la clase comandos usuario
@@ -171,8 +184,13 @@ class comandosUsuario(object):
         #ARMCH hace una peque;a pausa antes de volver a pedir otro comando
         logging.debug("Los datos han sido enviados al broker")            
         time.sleep(DEFAULT_DELAY)
+'''
+Comentario y clase hecho por: HANC La clase hilos se pretende enviar el alive del cliente
+para indicarle al servidor que este esta conectado.
+'''
 
 class hilos(object):
+    #HANC Constructor de la clase hilos
     def __init__(self,tiempo):
         self.tiempo=tiempo
         self.hiloAlive=threading.Thread(name = 'ALIVE',
@@ -180,14 +198,16 @@ class hilos(object):
                         args = (self,self.tiempo),
                         daemon = False
                         )
+
+    #HANC Metodo que envia hilos cada 2 segundos
     def enviarALIVE(self, tiempo=2):
         datos = []
         user = ''
-        archivo = open('usuario','r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open('usuario','r') #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo: #HANC Leer cada linea del archivo
             registro = line.split('\n')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar
+        archivo.close() #HANC Cerrar el archivo al finalizar
         for i in datos:
             user = i[0]
         while True:
@@ -195,7 +215,11 @@ class hilos(object):
             client.publish("comandos/08/"+str(user),mensaje.alive(),1,False)
             time.sleep(self.tiempo)
 
+#comentario y clase hecho por ARMCH
+# esta clase sirve para ejecutar un hilo y reproducir un audio que le ingresa al usuario.
 class hiloAudio(object):
+    
+    #ARMCH constructor de la clase
     def __init__(self,mensaje):
         self.mensaje=mensaje
         self.hiloRecibidor=threading.Thread(name = 'Guardar nota de voz',
@@ -203,12 +227,19 @@ class hiloAudio(object):
                         args = (self,self.mensaje),
                         daemon = False
                         )
+    #ARMCH metodo de la clase que reproduce el audio    
     def reproducirAudio(self, mensaje):
         logging.debug(mensaje)       
         logging.info("Reproduciendo nota de voz...")
         os.system('aplay Desencriptado_recibidoEncriptado.wav')
- 
+        
+ #clase y comentario hecho por ARMCH
+ #esta clase consta de dos hilos 
+ #un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
+ #otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
 class hiloTCP(object):
+    #ARMCH constructor de la clase , se definen los dos hilos de la clase
+    
     def __init__(self, SERVER_IP):
         self.SERVER_IP=SERVER_IP
         self.hiloConexion=threading.Thread(name = 'Conexion por TCP',
@@ -221,16 +252,16 @@ class hiloTCP(object):
                         args = (self,self.SERVER_IP),
                         daemon = False
                         )
-
+    #ARMCH este metodo se encarga de enviar la nota de voz del cliente/servidor
     def conexionTCP(self, SERVER_IP):
         self.SERVER_IP   = '167.71.243.238'
         SERVER_PORT = 9808
         BUFFER_SIZE = 64 * 1024
         time.sleep(5)
-        # Se crea socket TCP
+        #ARMCH Se crea socket TCP
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # Se conecta al puerto donde el servidor se encuentra a la escucha
+        #ARMCH Se conecta al puerto donde el servidor se encuentra a la escucha
         server_address = (self.SERVER_IP, SERVER_PORT)
         print('Conectando a {} en el puerto {}'.format(*server_address))
         sock.connect(server_address)
@@ -249,7 +280,8 @@ class hiloTCP(object):
             sock.close()
         except ConnectionRefusedError:
             logging.error("El servidor ha rechazado la conexion, intente hacerlo otra vez")
-  
+    
+    #ARMCH este metodo se encarga de recibir el audio del servidor
     def conexionTCPrecibir(self,SERVER_IP):
         SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
@@ -260,11 +292,11 @@ class hiloTCP(object):
 
         try:
             buff = sock.recv(BUFFER_SIZE)
-            archivo = open('recibidoEncriptado.wav', 'wb') #Aca se guarda el archivo entrante
+            archivo = open('recibidoEncriptado.wav', 'wb') #ARMCH Aca se guarda el archivo entrante
             while buff:
                 archivo.write(buff)
-                buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
-            archivo.close() #Se cierra el archivo
+                buff = sock.recv(BUFFER_SIZE) #ARMCH Los bloques se van agregando al archivo
+            archivo.close() #ARMCH Se cierra el archivo
             #sock.close() #Se cierra el socket
             logging.info("Recepcion de archivo finalizada")
 
@@ -277,6 +309,7 @@ class hiloTCP(object):
             hilo = hiloAudio("topic")
             hilo.hiloRecibidor.start()
 
+#ARMCH aqui se ejecutaran los comandos de negociacion que le entren al cliente
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
     logging.debug("Si entro a la funcion")
@@ -293,19 +326,21 @@ def comandos_funcion(dato_entrada):
     else:
         pass
 
-#Configuracion inicial de logging
+#SALU Configuracion inicial de logging
 logging.basicConfig(
     level = logging.INFO, 
     format = '[%(levelname)s] (%(processName)-10s) %(message)s'
     ) 
 
-logging.info("Cliente MQTT con paho-mqtt") #Mensaje en consola
+logging.info("BIENVENIDOS A WHATSAPPBROS") #SALU Mensaje en consola
 
 #SALU Iniciamos la configuracion del cliente MQTT
 client = MQTTconfig(clean_session=True)
 rc = client.run()   #SALU Corre la configuracion del cliente MQTT
 
-#************* Suscripciones del cliente *********
+#************* Suscripciones del cliente *******************************
+#SALU: en este apartado suscribimos al cliente automaticamente y recopilamos
+#los datos que nos serviran para los mensajes de las tramas que entren
 comandos= configuracionCLiente(USER_FILENAME,2)
 lista_com=comandos.subComandos()
 usuarios = configuracionCLiente(USER_FILENAME,2)
@@ -319,10 +354,10 @@ lista_comandos_generales=[]
 lista_comandos_generales.append("comandos/08/"+str(lista_user[0]))
 lista_comandos_generales.extend(lista_sal)
 logging.debug(lista_comandos_generales)
-#***************************************************
+#************************************************************************
 
 hilo_enviar_Alive= hilos(2)
-#hilo_enviar_Alive.hiloAlive.start()
+#hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
 client.loop_start()
 #Loop principal:
 try:
@@ -343,15 +378,14 @@ try:
         --------------------------------------------------
         ''') 
         
-        #comando = input("Ingrese el comando: ")
         dato_usuario = input("Ingrese el comando: ")    #ARMCH el usuario ingresa un comando
         com=comandosUsuario(dato_usuario)               #ARMCH instancia del objeto instancia usuario
         com.accion()                                    #ARMCH ejecuta las acciones mqtt 
 
 except KeyboardInterrupt:
-    logging.warning("Desconectando del broker MQTT...")
+    logging.warning("Desconectando del broker MQTT...") #SALU da una advertencia al desconectar del broker
 
 finally:
-    client.loop_stop()
-    client.disconnect()
-    logging.info("Se ha desconectado del broker. Saliendo...")
+    client.loop_stop()          #SALU se detiene el loop principal
+    client.disconnect()         #SALU Se desconecta del broker
+    logging.info("Se ha desconectado del broker. Saliendo...")  #SALU mensaje final

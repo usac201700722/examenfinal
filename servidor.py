@@ -6,10 +6,11 @@ import socket
 import threading #Concurrencia con hilos
 from brokerdata import *
 from comandos import * 
-
-SALAS_FILENAME = 'salas'
-USER_FILENAME = 'usuarios'
-
+'''
+Classe y comentario hecho por: SALU
+en esta clase se configura al cliente MQTT, realizando diferentes llamadas
+a metodos o handlers de la libreria paho mqtt
+'''
 class MQTTconfig(mqtt.Client):
     def on_connect(self, client, userdata, flags, rc):
         #SALU Handler en caso suceda la conexion con el broker MQTT
@@ -43,13 +44,16 @@ class MQTTconfig(mqtt.Client):
             rc = self.loop_start()
         return rc
 
+'''
+Comentario y clase hecha por: HANC, La clase configuracionesCLiente se encarga de
+suscribir al cliente en los topics necesarios para la transmision de datos de tal forma
+que sea una suscripcion automatica en base a los archivos usuarios/salas.
+'''
 class configuracionesServidor(object):
-
     def __init__(self, filename='', qos=2):
         self.filename = filename
         self.qos = qos
-
-    
+    #HANC suscripcion a los comandos de salas
     def subSalas(self):
         datos = []
         archivo = open(self.filename,'r') 
@@ -61,15 +65,15 @@ class configuracionesServidor(object):
         for i in datos:
             client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), qos))
             logging.debug("comandos/"+str(i[0])+"/S"+str(i[1]))
-
+    #HANC suscripcion a los comandos de usuarios
     def subComandos(self):
         datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
+        archivo = open(self.filename,'r')   #HANC Abrir el archivo en modo de LECTURA
+        for line in archivo:                 #HANC Leer cada linea del archivo
             registro = line.split(',')
             registro[-1] = registro[-1].replace('\n', '')
             datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar       
+        archivo.close()                     #HANC Cerrar el archivo al finalizar       
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
             logging.debug("comandos/08/"+str(i[0]))
@@ -81,7 +85,16 @@ class configuracionesServidor(object):
     def __repr__(self):
         return self.__str__
 
+'''
+Clase y comentario hecho por: SALU
+En esta clase se ejecutan dos hilos, uno para la recepcion de archivos del cliente
+y otros para transmitir archivos a un cliente, estas conexiones se hacen con
+sockets TCP, las cuales hay que manejarse con mucho cuidado porque si el socket
+no se cierra bien es posible que la transmision de archivos no se ejecute de la manera
+correcta
+'''
 class hiloTCP(object):
+    #SALU constructor de la clase y aqui definimos los hilos asociados a la clase
     def __init__(self,topic,topic_negociador):
         self.topic=topic
         self.topic_negociador=topic_negociador
@@ -89,32 +102,33 @@ class hiloTCP(object):
                         target = hiloTCP.conexionTCP,
                         args = (self,),
                         daemon = True
-                        )#self,self.topic,self.topic_negociador
+                        )
         self.hiloEnviador=threading.Thread(name = 'Enviar nota de voz',
                         target = hiloTCP.conexionTCPenvio,
                         args = (self,),
                         daemon = True
-                        )#self.topic,self.topic_negociador
+                        )
 
-    def conexionTCP(self):  #, topic, topic_negociador
-        # Crea un socket TCP
+    #SALU Conexion TCP que se encarga de recibir el archivo de audio desde el cliente
+    def conexionTCP(self):  
+        #SALU Crea un socket TCP
         okey = comandosCliente(self.topic)
         logging.debug(okey.OK())
         topic_send="comandos/08/"+str(self.topic_negociador)
         print(topic_send)
         client.publish(topic_send,okey.OK(),2,False)     
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Bind the socket to the port
-        serverAddress = (IP_ADDR_ALL, IP_PORT) #Escucha en todas las interfaces
+        #SALU Bind the socket to the port
+        serverAddress = (IP_ADDR_ALL, IP_PORT) #SALU Escucha en todas las interfaces
         print('Iniciando servidor en {}, puerto {}'.format(*serverAddress))
         sock.bind(serverAddress) #Levanta servidor con parametros especificados
-        # Habilita la escucha del servidor en las interfaces configuradas
-        sock.listen(10) #El argumento indica la cantidad de conexiones en cola
+        #SALU Habilita la escucha del servidor en las interfaces configuradas
+        sock.listen(10) #SALU El argumento indica la cantidad de conexiones en cola
         
         bandera = True
         while bandera==True:
             
-            # Esperando conexion
+            #SALU Esperando conexion
             logging.info('Esperando conexion remota')
             connection, clientAddress = sock.accept()
             try:
@@ -122,7 +136,7 @@ class hiloTCP(object):
                 archivo = open('recibido.wav','wb')
                 while True:
                     data = connection.recv(BUFFER_SIZE)  
-                    while data: #Si se reciben datos (o sea, no ha finalizado la transmision del cliente)
+                    while data: #SALU Si se reciben datos (o sea, no ha finalizado la transmision del cliente)
                         logging.debug("Recibiendo...")
                         archivo.write(data)
                         data = connection.recv(BUFFER_SIZE)         
@@ -130,8 +144,8 @@ class hiloTCP(object):
                     logging.info('Transmision finalizada')
                     sock.close()
                     connection.close()
-
-                    time.sleep(5)
+                    #SALU espera unos segundos y activa el socket para enviar el archivo inmediatamente
+                    time.sleep(3)
                     enviar_nota_de_voz = hiloTCP(self.topic,self.topic_negociador)
                     enviar_nota_de_voz.hiloEnviador.start()
                     bandera = False
@@ -141,24 +155,19 @@ class hiloTCP(object):
                 sock.close()
 
             finally:
-                # Se baja el servidor para dejar libre el puerto para otras aplicaciones o instancias de la aplicacion
+                #SALU Se baja el servidor para dejar libre el puerto para otras aplicaciones o instancias de la aplicacion
                 connection.close()
-
-    def conexionTCPenvio(self): #, topic, topic_negociador
+    #SALU este metodo se encarga de enviar el archivo de audio a un cliente por medio de un socket TCP
+    def conexionTCPenvio(self): 
         print(self.topic)
-        #SERVER_ADDR = '167.71.243.238'
-        SERVER_PORT = 9808
-        #BUFFER_SIZE = 64 * 1024 
-        print("*****")
-        print("comandos/08/"+str(self.topic))
-        print("******")
+        SERVER_PORT = 9808 
         objeto= comandosCliente(self.topic)
         fsize = os.stat('recibido.wav').st_size
         
         client.publish("comandos/08/"+str(self.topic),objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
-        server_socket.listen(10)#1 conexion activa y 9 en cola
+        server_socket.listen(10)    #SALU 1 conexion activa y 9 en cola
         bandera = True
         try:
             while bandera==True:
@@ -166,7 +175,7 @@ class hiloTCP(object):
                 conn, addr = server_socket.accept()
                 print('Conexion establecida desde ', addr)
                 logging.debug('Enviando archivo de audio...')
-                with open('recibido.wav', 'rb') as f: #Se abre el archivo a enviar en BINARIO
+                with open('recibido.wav', 'rb') as f: #SALU Se abre el archivo a enviar en BINARIO
                     conn.sendfile(f, 0)
                     f.close()               
                 conn.close()
@@ -179,6 +188,11 @@ class hiloTCP(object):
             print("Cerrando...")
             server_socket.close()
 
+'''
+Método y comentario hecho por: SALU
+Este metodo se encarga de procesar las tramas de los comandos del cliente
+y de esta manera empezar la negociacion en la transferencia de archivos
+'''
 def comandosEntrada(dato):
     comando_accion = comandosServidor(str(dato))
     topic = comando_accion.separa()[1]
@@ -195,18 +209,21 @@ def comandosEntrada(dato):
         logging.debug("Comando no encontrado")
     time.sleep(5)
 
-#Configuracion inicial de logging
+#SALU Configuracion inicial de logging
 logging.basicConfig(
     level = logging.INFO, 
     format = '[%(levelname)s] (%(threadName)-10s) %(message)s'
     )
 
+#SALU empieza la configuracion MQTT
 client = MQTTconfig(clean_session=True)
 rc = client.run()   #SALU Corre la congiduracion 
+
 first =b'\x01$201700722$4000'
 client.publish("comandos/08/201700722",first,2,False)
 
 #*********** Suscripciones del servidor ******************
+#SALU hace las suscripciones automaticas del servidor
 qos = 1
 salas = configuracionesServidor(SALAS_FILENAME,qos)
 salas.subSalas()
@@ -214,20 +231,20 @@ comandos = configuracionesServidor(USER_FILENAME,qos)
 comandos.subComandos()
 #***********************************************************
 
-#Iniciamos el thread (implementado en paho-mqtt) para estar atentos a mensajes en los topics subscritos
+#SALU Iniciamos el thread (implementado en paho-mqtt) para estar atentos a mensajes en los topics subscritos
 client.loop_start()	#COn esto hacemos que las sub funcionen
-#El thread de MQTT queda en el fondo, mientras en el main loop hacemos otra cosa
+#SALU El thread de MQTT queda en el fondo, mientras en el main loop hacemos otra cosa
 
 time.sleep(5)
 try:
     while True:
-        logging.debug("Hilo principal")
+        logging.debug("Hilo principal, Aqui puede ejecutarse mas comando si se deseea")
         time.sleep(5)
         	
 except KeyboardInterrupt:
-    logging.warning("Desconectando del broker...")
+    logging.warning("Desconectando del broker...")  #SALU Advertencia que se esta desconectando del broker
 
 finally:
-    client.loop_stop()          #Se mata el hilo que verifica los topics en el fondo
-    client.disconnect()         #Se desconecta del broker
-    logging.info("Desconectado del broker. Saliendo...")
+    client.loop_stop()          #SALU Se mata el hilo que verifica los topics en el fondo
+    client.disconnect()         #SALU Se desconecta del broker
+    logging.info("Desconectado del broker. Saliendo...")    #SALU mensaje final

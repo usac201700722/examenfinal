@@ -1,3 +1,4 @@
+#SALU
 #La clase comandosCLiente sirve para realizar las tramas de la negociacion
 #entre cliente y servidor, a pesar que se llame comandosCLiente, no esta limitado
 #solo a cliente, sino que el servidor tambien podra hacer uso de esta clase.
@@ -6,21 +7,23 @@ class comandosCliente(object):
         self.Dest=Dest
         self.SEP= b'$'
 
-    def fileTransfer(self, File_size=0):
+    def fileTransfer(self, enviador, File_size=0):  #SALU Trama para FTR
         FTR=b'\x03'
         Destino = self.Dest
-        Destino=Destino.encode()      
+        Destino=Destino.encode()
+        topic_enviador = str(enviador)
+        topic_enviador=topic_enviador.encode()      
         tamArchivo=str(File_size)
         tamArchivo=tamArchivo.encode()
-        trama= FTR+self.SEP+Destino+self.SEP+tamArchivo
+        trama= FTR+self.SEP+Destino+self.SEP+topic_enviador+self.SEP+tamArchivo
         return trama
-    def alive(self):
+    def alive(self):        #SALU Trama para ALIVE
         ALIVE=b'\x04'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= ALIVE+self.SEP+Destino
         return trama
-    def fileReceive(self, File_size=0):
+    def fileReceive(self, File_size=0):     #SALU Trama para FRR
         FRR=b'\x02'
         Destino = self.Dest
         Destino=Destino.encode()
@@ -28,21 +31,21 @@ class comandosCliente(object):
         tamArchivo=tamArchivo.encode()
         trama = FRR+self.SEP+Destino+self.SEP+tamArchivo
         return trama
-    def ack(self):
+    def ack(self):                          #SALU Trama para ACK
         ACK=b'\x05'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= ACK+self.SEP+Destino
         return trama
 
-    def OK(self):
+    def OK(self):                           #SALU Trama para OK
         OKEY=b'\x06'
         Destino = self.Dest
         Destino=Destino.encode()
         trama= OKEY+self.SEP+Destino
         return trama
 
-    def NO(self):
+    def NO(self):                           #SALU Trama para NO
         NEL=b'\x07'
         Destino = self.Dest
         Destino=Destino.encode()
@@ -54,11 +57,14 @@ class comandosCliente(object):
     def __repr__(self):
         return self.__str__
 
+#Comentario y clase hecho por: HANC
 #La clase comandosServidor sirve para obtener la trama recibida del cliente y 
 #separar cada dato como "comando", "ID O SALA" y/o "Tamaño del archivo",
 #aunque la clase se llame comandosServidor no esta limitada solo al servidor
 #Para este caso el cliente tambien hara uso de ella.
+
 class comandosServidor(object):
+    #HANC Metodo constructor de la clase coomandosServidor
     def __init__(self, comando):
         self.comando= str(comando)
     def __str__(self):
@@ -67,7 +73,7 @@ class comandosServidor(object):
         return self.__str__()
     def __len__(self):
         return len(self.comando)
-
+    #HANC Metodo que separa los comandos hechos por el usuario para enviarlos al servidor
     def separa(self):
         lista = []
         separados=[]
@@ -75,25 +81,3 @@ class comandosServidor(object):
         union = str(lista[1])
         separados = union.split("$")
         return separados
-#el \x03 no lo toma en cuenta solo el 3 como al final el comando es ese, o si es 4 y asi
-#sucesivamente entonces ya lo deja separado, luego toma el carnet o la sala y deja de
-#de ultimo el tamaño del archivo, no importando la cantidad de digitos
-# y hay ifs porque uno es si es el cliente osea el carnet o es una sala
-
-'''
-user=input("Ingrese el destino: ")
-fsize=int(input("Ingrese el tamaño del archivo: "))
-print("*************************")
-objeto= comandosCliente(user)
-objeto.fileTransfer(fsize)
-descomponer = comandosServidor(str(objeto.fileTransfer(fsize)))
-print(type(descomponer.separa()[0]))
-print(descomponer.separa()[1])
-print(descomponer.separa()[2])
-print("*************************")
-objeto.alive()
-descomponer = comandosServidor(str(objeto.alive()))
-print(descomponer.separa()[0])
-print(descomponer.separa()[1])
-print("*************************")
-'''
