@@ -1,36 +1,44 @@
-import string
+'''
+Comentario y aclaracion hecho por: SALU
+Para el encriptado del mensaje de texto enviado por MQTT se utilizo
+el algoritmo de encriptado cesar, este algoritmo permite sustituir
+cada caracter por otro 'aleatorio' (No es aleatorio, pero eso se pretende).
+Utilizamos este algortimo porque era el que mas se adecuaba a las necesidades
+del proyecto del curso, especialmente porque es informacion poco sensible.
+'''
+import string #HANC Se importa la libreria string para la manipulacion de cadenas de texto
+letras = list(string.ascii_lowercase)#HANC Crea una lista con caracteres ASCII de las letras minusculas del alfabeto
 
-alfabeto = list(string.ascii_lowercase)
-
-def cifrado_cesar(alfabeto,n,texto):
-    texto_cifrado = ""
-    for letra in texto:
-        if letra in alfabeto:
-            indice_actual = alfabeto.index(letra)
-            indice_cesar = indice_actual + n
-            if indice_cesar > 25:
-                indice_cesar -= 25
-            texto_cifrado += alfabeto[indice_cesar]
+#HANC Funcion utilizada para la encriptacion del mensaje a enviar por el usuario
+def crypt_cesar(letras,n,cifrado):
+    encrypt = "" 
+    for caracter in cifrado: #HANC Se obtiene cada uno de los caracteres del texto a cifrar
+        if caracter in letras: #HANC Verifica si el caracter esta dentro de la lista letras
+            index_now = letras.index(caracter) #HANC Se obtiene la posicion del caracter de la lista
+            index_cesar = index_now + n #HANC A esa posicion se le agrega un valor entero para asi crifrar el texto
+            if index_cesar > 25: 
+                index_cesar -= 25 #HANC Para que los valores queden dentro del rango de la lista
+            encrypt += letras[index_cesar] #HANC Agrega el valor str al texto cirfrado "encrypt"
         else:
-            texto_cifrado += letra
-    return texto_cifrado
+            encrypt += caracter #HANC Si no se encuentra el caracter simplemente lo agrega
+    return encrypt
 
-
-def decodificar(alfabeto,n,texto):
-    texto_decodificado = ""
-    for letra in texto:
-        if letra in alfabeto:
-            indice_cesar = alfabeto.index(letra)
-            indice_original = indice_cesar - n
-            if indice_original <0 :
-                indice_original += 25
-            texto_decodificado += alfabeto[indice_original]
+#HANC Funcion para desencriptar
+def decrypt(letras,n,cifrado):
+    text_decrypt = ""
+    for caracter in cifrado: #HANC Se obtienen los caracteres del texto
+        if caracter in letras: #HANC Verifica si el caracter esta dentro de la lista letras
+            index_cesar = letras.index(caracter) #HANC Se obtiene el indice de la lista
+            index_origi = index_cesar - n #HANC Se obtiene la posicicion original del caracter
+            if index_origi <0 :
+                index_origi += 25 #HANC Para que los valores queden dentro del rango de la lista
+            text_decrypt += letras[index_origi] #HANC Agrega el valor str al texto "decrypt" 
         else:
-            texto_decodificado += letra
-    return texto_decodificado
+            text_decrypt += caracter #HANC Si no se encuentra el caracter simplemente lo agrega
+    return text_decrypt
 
-#frase = "hola a todos, bienvenidos al curso de python 3 desde cero orientado por la cartilla"
-#frase_cifrada = cifrado_cesar(alfabeto,3,frase)
-#frase_decodificada = decodificar(alfabeto,3,frase_cifrada)
-#print(frase_cifrada)
-#print(frase_decodificada)
+frase = "hola a todos, bienvenidos al curso de python 3 desde cero orientado por la cartilla $"
+frase_cifrada = crypt_cesar(letras,5,frase)
+frase_decodificada = decrypt(letras,5,frase_cifrada)
+print(frase_cifrada)
+print(frase_decodificada)
