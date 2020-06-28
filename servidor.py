@@ -102,12 +102,12 @@ class hiloTCP(object):
         self.hiloRecibidor=threading.Thread(name = 'Guardar nota de voz',
                         target = hiloTCP.conexionTCP,
                         args = (self,self.topic),
-                        daemon = False
+                        daemon = True
                         )
         self.hiloEnviador=threading.Thread(name = 'Enviar nota de voz',
                         target = hiloTCP.conexionTCPenvio,
                         args = (self,self.topic),
-                        daemon = False
+                        daemon = True
                         )
 
     def conexionTCP(self, topic):
@@ -144,6 +144,7 @@ class hiloTCP(object):
                     logging.info('Transmision finalizada')
                     sock.close()
                     connection.close()
+
                     time.sleep(5)
                     enviar_nota_de_voz = hiloTCP(self.topic)
                     enviar_nota_de_voz.hiloEnviador.start()
@@ -168,22 +169,25 @@ class hiloTCP(object):
         client.publish("comandos/08/201700722",objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
-        server_socket.listen(100)#1 conexion activa y 9 en cola
+        server_socket.listen(1)#1 conexion activa y 9 en cola
+        bandera = True
         try:
-            while True:
+            while bandera==True:
                 logging.info("\nEsperando conexion remota...\n")
                 conn, addr = server_socket.accept()
                 print('Conexion establecida desde ', addr)
                 logging.debug('Enviando archivo de audio...')
                 with open('recibido.wav', 'rb') as f: #Se abre el archivo a enviar en BINARIO
                     conn.sendfile(f, 0)
-                    f.close()
+                    f.close()               
                 conn.close()
-                print("\n\nArchivo enviado a: ", addr)
                 server_socket.close()
+                print("\n\nArchivo enviado a: ", addr)               
                 print("Cerrando el servidor...")
+                time.sleep(2)
+                bandera = False
         finally:
-            print("Cerrando el servidor...")
+            print("Cerrando...")
             server_socket.close()
 
 def comandosEntrada(dato):
