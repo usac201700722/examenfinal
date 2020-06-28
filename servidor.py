@@ -82,26 +82,27 @@ class configuracionesServidor(object):
         return self.__str__
 
 class hiloTCP(object):
-    def __init__(self,topic):
+    def __init__(self,topic,topic_negociador):
         self.topic=topic
+        self.topic_negociador=topic_negociador
         self.hiloRecibidor=threading.Thread(name = 'Guardar nota de voz',
                         target = hiloTCP.conexionTCP,
-                        args = (self,self.topic),
+                        args = (self,),
                         daemon = True
-                        )
+                        )#self,self.topic,self.topic_negociador
         self.hiloEnviador=threading.Thread(name = 'Enviar nota de voz',
                         target = hiloTCP.conexionTCPenvio,
-                        args = (self,self.topic),
+                        args = (self,),
                         daemon = True
-                        )
+                        )#self.topic,self.topic_negociador
 
-    def conexionTCP(self, topic):
+    def conexionTCP(self):  #, topic, topic_negociador
         # Crea un socket TCP
-        logging.info(self.topic)
         okey = comandosCliente(self.topic)
         logging.debug(okey.OK())
-        client.publish("comandos/08/201700722",okey.OK(),2,False)
-        
+        topic_send="comandos/08/"+str(self.topic_negociador)
+        print(topic_send)
+        client.publish(topic_send,okey.OK(),2,False)     
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Bind the socket to the port
         serverAddress = (IP_ADDR_ALL, IP_PORT) #Escucha en todas las interfaces
@@ -131,7 +132,7 @@ class hiloTCP(object):
                     connection.close()
 
                     time.sleep(5)
-                    enviar_nota_de_voz = hiloTCP(self.topic)
+                    enviar_nota_de_voz = hiloTCP(self.topic,self.topic_negociador)
                     enviar_nota_de_voz.hiloEnviador.start()
                     bandera = False
                     break
@@ -143,15 +144,18 @@ class hiloTCP(object):
                 # Se baja el servidor para dejar libre el puerto para otras aplicaciones o instancias de la aplicacion
                 connection.close()
 
-    def conexionTCPenvio(self, topic):
+    def conexionTCPenvio(self): #, topic, topic_negociador
         print(self.topic)
         #SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
         #BUFFER_SIZE = 64 * 1024 
+        print("*****")
+        print("comandos/08/"+str(self.topic))
+        print("******")
         objeto= comandosCliente(self.topic)
         fsize = os.stat('recibido.wav').st_size
         
-        client.publish("comandos/08/201700722",objeto.fileReceive(fsize),2,False)
+        client.publish("comandos/08/"+str(self.topic),objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
         server_socket.listen(1)#1 conexion activa y 9 en cola
@@ -178,10 +182,11 @@ class hiloTCP(object):
 def comandosEntrada(dato):
     comando_accion = comandosServidor(str(dato))
     topic = comando_accion.separa()[1]
+    topic_transmisor = comando_accion.separa()[2]
     
     if (comando_accion.separa()[0]=="03"):
         logging.info("Habilitando socket TCP para recepcion y envio de archivo")                  
-        recibe = hiloTCP(topic)
+        recibe = hiloTCP(topic,topic_transmisor)
         recibe.hiloRecibidor.start()
     elif (comando_accion.separa()[0]=="04"):
         logging.debug("**************************************")            

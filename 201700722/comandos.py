@@ -6,13 +6,15 @@ class comandosCliente(object):
         self.Dest=Dest
         self.SEP= b'$'
 
-    def fileTransfer(self, File_size=0):
+    def fileTransfer(self, enviador, File_size=0):
         FTR=b'\x03'
         Destino = self.Dest
-        Destino=Destino.encode()      
+        Destino=Destino.encode()
+        topic_enviador = str(enviador)
+        topic_enviador=topic_enviador.encode()      
         tamArchivo=str(File_size)
         tamArchivo=tamArchivo.encode()
-        trama= FTR+self.SEP+Destino+self.SEP+tamArchivo
+        trama= FTR+self.SEP+Destino+self.SEP+topic_enviador+self.SEP+tamArchivo
         return trama
     def alive(self):
         ALIVE=b'\x04'
