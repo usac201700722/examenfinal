@@ -9,7 +9,7 @@ import threading #Concurrencia con hilos
 from brokerdata import * #Informacion de la conexion
 from comandos import *
 from encriptado import *
-from cryptoMessage import *
+from cifradocesar import *
 
 PASSWORD = "hola"
 USER_FILENAME ='usuario'
@@ -36,14 +36,13 @@ class MQTTconfig(paho.Client):
             logging.debug("El contenido del mensaje es: " + str(msg.payload))#que vino en el mss
             logging.debug("--------------------------------------------------------------------------")
             comandos_funcion(dato)
-        else:
-            
+        else:      
             mensaje_chat= msg.payload
-            mensaje=desencriptarMensaje(mensaje_chat)
-            logging.info(mensaje)
+            frase_cifrada=str(mensaje_chat.decode('utf-8'))
+            frase_decodificada = decodificar(alfabeto,3,frase_cifrada)
             logging.info("**************************************************************************")
             logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
-            logging.info("El contenido del mensaje es: " + str(mensaje_chat))#que vino en el mss
+            logging.info("El contenido del mensaje es: " + str(frase_decodificada)) #que vino en el mss
             logging.info("**************************************************************************")
             
     def on_subscribe(self, client, obj,mid, qos):
@@ -285,8 +284,9 @@ try:
         if comando == "1a":
             topic_send = input("Ingrese el numero de usuario (Ej: '201700376', sin comillas): ")
             mensaje = input("Texto a enviar: ")
-            mensaje_encriptado = encriptarMensaje(mensaje)
-            client.publish("usuarios/08/"+str(topic_send),mensaje_encriptado,1,False)
+            frase_cifrada = cifrado_cesar(alfabeto,3,mensaje)
+            frase_cifrada=frase_cifrada.encode()
+            client.publish("usuarios/08/"+str(topic_send),frase_cifrada,1,False)
         elif comando == "1b":
             topic_send = input("Ingrese el nombre de la sala (Ej: 'S01', sin comillas y S Mayúscula): ")
             mensaje = input("Texto a enviar: ")
