@@ -7,11 +7,8 @@ import threading #Concurrencia con hilos
 from brokerdata import *
 from comandos import * 
 
-
-LOG_FILENAME = 'mqtt.log'
 SALAS_FILENAME = 'salas'
 USER_FILENAME = 'usuarios'
-#dato=b''
 
 class MQTTconfig(mqtt.Client):
     def on_connect(self, client, userdata, flags, rc):
@@ -27,7 +24,7 @@ class MQTTconfig(mqtt.Client):
         #SALU msg contiene el topic y la info que llego
         #SALU Se muestra en pantalla informacion que ha llegado
         #Se muestra en pantalla informacion que ha llegado
-        #global dato 
+        
         dato = msg.payload
         logging.debug("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
         logging.debug("El contenido del mensaje es: " + str(dato.decode('utf-8')))#que vino en el mss
@@ -64,19 +61,7 @@ class configuracionesServidor(object):
         for i in datos:
             client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), qos))
             logging.debug("comandos/"+str(i[0])+"/S"+str(i[1]))
-    '''
-    def subUsuarios(self):
-        datos = []
-        archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
-        for line in archivo: #Leer cada linea del archivo
-            registro = line.split(',')
-            registro[-1] = registro[-1].replace('\n', '')
-            datos.append(registro) 
-        archivo.close() #Cerrar el archivo al finalizar       
-        for i in datos:
-            client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
-            logging.debug("usuarios/08/"+str(i[0]))
-    '''
+
     def subComandos(self):
         datos = []
         archivo = open(self.filename,'r') #Abrir el archivo en modo de LECTURA
@@ -114,7 +99,7 @@ class hiloTCP(object):
         # Crea un socket TCP
         logging.info(self.topic)
         okey = comandosCliente(self.topic)
-        print(okey.OK())
+        logging.debug(okey.OK())
         client.publish("comandos/08/201700722",okey.OK(),2,False)
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -160,9 +145,9 @@ class hiloTCP(object):
 
     def conexionTCPenvio(self, topic):
         print(self.topic)
-        SERVER_ADDR = '167.71.243.238'
+        #SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
-        BUFFER_SIZE = 64 * 1024 
+        #BUFFER_SIZE = 64 * 1024 
         objeto= comandosCliente(self.topic)
         fsize = os.stat('recibido.wav').st_size
         
@@ -205,7 +190,6 @@ def comandosEntrada(dato):
         logging.debug("Comando no encontrado")
     time.sleep(5)
 
-
 #Configuracion inicial de logging
 logging.basicConfig(
     level = logging.INFO, 
@@ -219,10 +203,6 @@ client.publish("comandos/08/201700722",first,2,False)
 
 #*********** Suscripciones del servidor ******************
 qos = 1
-'''
-user = configuracionesServidor(USER_FILENAME,qos)
-user.subUsuarios()
-'''
 salas = configuracionesServidor(SALAS_FILENAME,qos)
 salas.subSalas()
 comandos = configuracionesServidor(USER_FILENAME,qos)
@@ -243,6 +223,6 @@ except KeyboardInterrupt:
     logging.warning("Desconectando del broker...")
 
 finally:
-    client.loop_stop() #Se mata el hilo que verifica los topics en el fondo
-    client.disconnect() #Se desconecta del broker
+    client.loop_stop()          #Se mata el hilo que verifica los topics en el fondo
+    client.disconnect()         #Se desconecta del broker
     logging.info("Desconectado del broker. Saliendo...")

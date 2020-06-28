@@ -4,17 +4,12 @@ import time
 import socket
 import random
 import os
-import sys       #Requerido para salir (sys.exit())
-import threading #Concurrencia con hilos
-from brokerdata import * #Informacion de la conexion
+import sys                  #Requerido para salir (sys.exit())
+import threading            #Concurrencia con hilos
+from brokerdata import *    #Informacion de la conexion
 from comandos import *
 from encriptado import *
 from cifradocesar import *
-
-PASSWORD = "hola"
-USER_FILENAME ='usuario'
-SALAS_FILENAME = 'salas'
-DEFAULT_DELAY = 2
 
 class MQTTconfig(paho.Client):
     def on_connect(self, client, userdata, flags, rc):
@@ -29,7 +24,9 @@ class MQTTconfig(paho.Client):
         #SALU Callback que se ejecuta cuando llega un mensaje al topic suscrito
         #SALU msg contiene el topic y la info que llego
         #SALU Se muestra en pantalla informacion que ha llegado
-        if str(msg.topic)=="comandos/08/201700722":
+        topic_usuario="comandos/08/"+str(lista_user[0])
+        print(topic_usuario)
+        if str(msg.topic)==topic_usuario:
             dato = msg.payload
             logging.debug("--------------------------------------------------------------------------")
             logging.debug("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
@@ -38,8 +35,9 @@ class MQTTconfig(paho.Client):
             comandos_funcion(dato)
         else:      
             mensaje_chat= msg.payload
-            frase_cifrada=str(mensaje_chat.decode('utf-8'))
-            frase_decodificada = decodificar(alfabeto,3,frase_cifrada)
+            frase_cifrada=str(mensaje_chat.decode('utf-8'))           
+            frase_decodificada = decrypt(letras,5,frase_cifrada)
+            logging.debug("Mensaje encriptado" + str(frase_cifrada))
             logging.info("**************************************************************************")
             logging.info("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
             logging.info("El contenido del mensaje es: " + str(frase_decodificada)) #que vino en el mss
@@ -112,6 +110,69 @@ class configuracionCLiente(object):
 
     def __repr__(self):
         return self.__str__
+
+class comandosUsuario(object):
+    #ARMCH este es el constructor de la clase comandos usuario
+    def __init__(self, comando =""):
+        self.comando=comando
+    #ARMCH metodo que maneja cada una de las acciones que se van a realizar por mqtt
+    def accion(self):
+        if self.comando == "1a":    #ARMCH aqui envia mensajes a usuarios
+            topic_send = input("Ingrese el numero de usuario (Ej: '201700376', sin comillas): ")
+            mensaje = input("Texto a enviar: ")
+            frase_cifrada = crypt_cesar(letras,5,mensaje)
+            frase_cifrada=frase_cifrada.encode()
+            client.publish("usuarios/08/"+str(topic_send),frase_cifrada,1,False)
+        elif self.comando == "1b":  #ARMCH aqui envia mensajes a salas
+            topic_send = input("Ingrese el nombre de la sala (Ej: 'S01', sin comillas y S Mayúscula): ")
+            mensaje = input("Texto a enviar: ")
+            frase_cifrada = crypt_cesar(letras,5,mensaje)
+            frase_cifrada=frase_cifrada.encode()
+            client.publish("salas/08/"+str(topic_send),frase_cifrada,1,False)
+        elif self.comando == "2a":  #ARMCH aqui envia audio a usuarios
+            topic_send = input("Ingrese el usuario al que desea enviar el audio (Ej: '201700376', sin comillas): ")
+            duracion = int(input("Ingrese la duracion del audio en segundos: (Max. 30 seg)"))
+            if duracion<=30:
+                grabador = str("arecord -d "+str(duracion)+" -f U8 -r 8000 ultimoAudio.wav")
+                logging.info('Comenzando la grabación')
+                os.system(grabador)
+                logging.info('***Grabación finalizada***')
+                size= os.stat('ultimoAudio.wav').st_size
+                mensaje = comandosCliente(topic_send)
+                #print(mensaje.fileTransfer(size))
+                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
+                Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+
+            else:
+                logging.error("¡La duracion debe ser menor a 30 seg!")
+                
+       
+        elif self.comando == "2b":  #ARMCH aqui envia audios a salas
+            topic_send = input("Ingrese la sala a la que desea enviar el audio (Ej: 'S01', sin comillas y S Mayúscula): ")
+            duracion = int(input("Ingrese la duracion del audio en segundos: (Max. 30 seg)"))
+            if duracion<=30:    #ARMCH si el audio es menor que 30s lo envia
+                grabador = str("arecord -d "+str(duracion)+" -f U8 -r 8000 ultimoAudio.wav")
+                logging.info('Comenzando la grabación')
+                os.system(grabador)
+                logging.info('***Grabación finalizada***')
+                size= os.stat('ultimoAudio.wav').st_size
+                mensaje = comandosCliente(topic_send)
+                #print(mensaje.fileTransfer(size))
+                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
+                Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+            else:
+                logging.error("¡La duracion debe ser menor a 30 seg!")
+                
+                
+        elif self.comando in ["exit","EXIT"]:   #ARMCH sale del programa
+            sys.exit(0)
+
+        else:
+            logging.error("El comando ingresado es incorrecto, recuerde ver las instrucciones")
+        
+        #ARMCH hace una peque;a pausa antes de volver a pedir otro comando
+        logging.debug("Los datos han sido enviados al broker")            
+        time.sleep(DEFAULT_DELAY)
 
 class hilos(object):
     def __init__(self,tiempo):
@@ -244,7 +305,7 @@ logging.info("Cliente MQTT con paho-mqtt") #Mensaje en consola
 
 #SALU Iniciamos la configuracion del cliente MQTT
 client = MQTTconfig(clean_session=True)
-rc = client.run()   #SALU Corre la congiduracion 
+rc = client.run()   #SALU Corre la configuracion del cliente MQTT
 
 #************* Suscripciones del cliente *********
 comandos= configuracionCLiente(USER_FILENAME,2)
@@ -253,7 +314,7 @@ usuarios = configuracionCLiente(USER_FILENAME,2)
 lista_user=usuarios.subUsuarios()
 salas = configuracionCLiente(SALAS_FILENAME,2)
 lista_sal = salas.subSalas()
-logging.debug(lista_com)
+logging.debug(lista_com) #muestra el usuario
 logging.debug(lista_user)
 logging.debug(lista_sal)
 #***************************************************
@@ -261,7 +322,7 @@ logging.debug(lista_sal)
 hilo_enviar_Alive= hilos(2)
 #hilo_enviar_Alive.hiloAlive.start()
 client.loop_start()
-#Loop principal: leer los datos de los sensores y enviarlos al broker en los topics adecuados cada cierto tiempo
+#Loop principal:
 try:
     while True: 
         #ARMCH menu principal
@@ -280,66 +341,10 @@ try:
         --------------------------------------------------
         ''') 
         
-        comando = input("Ingrese el comando: ") 
-        if comando == "1a":
-            topic_send = input("Ingrese el numero de usuario (Ej: '201700376', sin comillas): ")
-            mensaje = input("Texto a enviar: ")
-            frase_cifrada = cifrado_cesar(alfabeto,3,mensaje)
-            frase_cifrada=frase_cifrada.encode()
-            client.publish("usuarios/08/"+str(topic_send),frase_cifrada,1,False)
-        elif comando == "1b":
-            topic_send = input("Ingrese el nombre de la sala (Ej: 'S01', sin comillas y S Mayúscula): ")
-            mensaje = input("Texto a enviar: ")
-            client.publish("salas/08/"+str(topic_send),mensaje,1,False)
-        elif comando == "2a":
-            topic_send = input("Ingrese el usuario al que desea enviar el audio (Ej: '201700376', sin comillas): ")
-            duracion = int(input("Ingrese la duracion del audio en segundos: (Max. 30 seg)"))
-            if duracion<=30:
-                grabador = str("arecord -d "+str(duracion)+" -f U8 -r 8000 ultimoAudio.wav")
-                logging.info('Comenzando la grabación')
-                os.system(grabador)
-                logging.info('***Grabación finalizada***')
-                size= os.stat('ultimoAudio.wav').st_size
-                mensaje = comandosCliente(topic_send)
-                print(mensaje.fileTransfer(size))
-                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
-                Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
-                #time.sleep(10)
-                #conexion= hiloTCP(SERVER_IP)
-                #conexion.hiloConexion.start()
-            else:
-                logging.error("¡La duracion debe ser menor a 30 seg!")
-                break
-        
-        elif comando == "2b":
-            topic_send = input("Ingrese el usuario al que desea enviar el audio (Ej: 'S01', sin comillas y con S mayúscula): ")
-            duracion = int(input("Ingrese la duracion del audio en segundos: (Max. 30 seg)"))
-            if duracion<=30:
-                grabador = str("arecord -d "+str(duracion)+" -f U8 -r 8000 ultimoAudio.wav")
-                logging.info('Comenzando la grabación')
-                os.system(grabador)
-                logging.info('***Grabación finalizada***')
-                size= os.stat('ultimoAudio.wav').st_size
-                mensaje = comandosCliente(topic_send)
-                print(mensaje.fileTransfer(size))
-                client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(size),1,False)
-                Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
-                #time.sleep(10)
-                #conexion= hiloTCP(SERVER_IP)
-                #conexion.hiloConexion.start()
-            else:
-                logging.error("¡La duracion debe ser menor a 30 seg!")
-                break
-
-        elif comando in ["exit","EXIT"]: 
-            sys.exit(0)
-
-        else:
-            logging.error("El comando ingresado es incorrecto, recuerde ver las instrucciones")
-               
-        logging.debug("Los datos han sido enviados al broker")            
-        #Retardo hasta la proxima publicacion de info
-        time.sleep(DEFAULT_DELAY)
+        #comando = input("Ingrese el comando: ")
+        dato_usuario = input("Ingrese el comando: ")    #ARMCH el usuario ingresa un comando
+        com=comandosUsuario(dato_usuario)               #ARMCH instancia del objeto instancia usuario
+        com.accion()                                    #ARMCH ejecuta las acciones mqtt 
 
 except KeyboardInterrupt:
     logging.warning("Desconectando del broker MQTT...")
