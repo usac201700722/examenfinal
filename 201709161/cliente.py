@@ -375,7 +375,7 @@ client.loop_start()
 #SALU comienza el hilo de ALIVE, para que envie cada cierto tiempo el alive al servidor
 #OJO: usamos 5 segundos y no 2, porque mientras mas rápido se envien los alives al servidor
 #mas se tarda toda la negociacion, y esto puede causar problemas en la transmision de audios.
-hilo_enviar_Alive= hilos(5)
+hilo_enviar_Alive= hilos(120)
 hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
 
 
