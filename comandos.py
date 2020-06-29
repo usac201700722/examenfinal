@@ -25,7 +25,7 @@ class comandosCliente(object):
         extra_1=extra_1.encode()
         trama= ALIVE+self.SEP+Destino+self.SEP+extra_1
         return trama
-
+        
     def fileReceive(self, File_size=0):     #SALU Trama para FRR
         FRR=b'\x02'
         Destino = self.Dest

@@ -25,8 +25,7 @@ class MQTTconfig(mqtt.Client):
         #SALU Callback que se ejecuta cuando llega un mensaje al topic suscrito
         #SALU msg contiene el topic y la info que llego
         #SALU Se muestra en pantalla informacion que ha llegado
-        #Se muestra en pantalla informacion que ha llegado
-        
+        #Se muestra en pantalla informacion que ha llegado        
         dato = msg.payload
         logging.debug("Ha llegado el mensaje al topic: " + str(msg.topic)) #de donde vino el mss
         logging.debug("El contenido del mensaje es: " + str(dato.decode('utf-8')))#que vino en el mss
@@ -65,7 +64,7 @@ class configuracionesServidor(object):
         archivo.close() #Cerrar el archivo al finalizar
         for i in datos:
             client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), qos))
-            logging.debug("comandos/"+str(i[0])+"/S"+str(i[1]))
+            #logging.debug("comandos/"+str(i[0])+"/S"+str(i[1]))
     #HANC suscripcion a los comandos de usuarios
     def subComandos(self):
         datos = []
@@ -77,7 +76,7 @@ class configuracionesServidor(object):
         archivo.close()                     #HANC Cerrar el archivo al finalizar       
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
-            logging.debug("comandos/08/"+str(i[0]))
+            #logging.debug("comandos/08/"+str(i[0]))
 
     def __str__(self):
         datosMQTT="Archivo de datos: "+str(self.filename)+" Qos: "+ str(self.qos)
@@ -143,6 +142,9 @@ class hiloTCP(object):
                     logging.info('Transmision finalizada')
                     sock.close()
                     connection.close()
+                    acknowledge = comandosCliente(self.topic_negociador)
+                    topic_send="comandos/08/"+str(self.topic_negociador)
+                    client.publish(topic_send,acknowledge.ack(),2,False)
                     #SALU espera unos segundos y activa el socket para enviar el archivo inmediatamente
                     time.sleep(3)
                     enviar_nota_de_voz = hiloTCP(self.topic,self.topic_negociador)
@@ -161,7 +163,6 @@ class hiloTCP(object):
         SERVER_PORT = 9808 
         objeto= comandosCliente(self.topic)
         fsize = os.stat('recibido.wav').st_size
-
         client.publish("comandos/08/"+str(self.topic),objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
@@ -186,31 +187,58 @@ class hiloTCP(object):
         finally:
             logging.warning("Cerrando el servidor...")
             server_socket.close()
-            
 
+global acivos   #SALU: el uso de variables globales en una MALA PRACTICA, sin embargo, solo 
+activos = []    # de esta forma se me ocurrio hacer que el chequeo de ALIVEs funcionara bien.
+
+#HANC Método que verifica si un usuario esta contenido en una lista
+def Carnets(carne):  
+    i=0
+    while(i <len(activos)):
+        if activos[i] == carne:
+            return True
+        else:
+            i+=1
+    return False
 '''
 Método y comentario hecho por: SALU
 Este metodo se encarga de procesar las tramas de los comandos del cliente
 y de esta manera empezar la negociacion en la transferencia de archivos
 '''
 def comandosEntrada(dato):
-    comando_accion = comandosServidor(str(dato))
-    topic = comando_accion.separa()[1]
-    topic_transmisor = comando_accion.separa()[2]
+    comando_accion = comandosServidor(str(dato))    #SALU variable tipo comandosServidor
+    topic = comando_accion.separa()[1]              #SALU topic que envia datos o recibe (depende de la trama)
+    topic_transmisor = comando_accion.separa()[2]   #SALU cuando se envia audio este es el usuario que hace la negociacion
     
+    #SALU: Cuando es un FTR hace lo siguiente
     if (comando_accion.separa()[0]=="03"):
-        logging.info("Se recibio FTR del cliente: "+str(topic_transmisor))                  
-        recibe = hiloTCP(topic,topic_transmisor)
-        recibe.hiloRecibidor.start()
-    elif (comando_accion.separa()[0]=="04"):           
+        logging.info("Se recibio FTR del cliente: "+str(topic_transmisor))
+        esta_activo = Carnets(topic)    #SALU método que verifica si el remitente esta activo
+        if esta_activo==True:           #SALU Si el remitente esta activo abre el socket TCP
+            recibe = hiloTCP(topic,topic_transmisor)
+            recibe.hiloRecibidor.start()
+        else:                           #SALU si el remitente NO esta activo envia un mensaje de NO al negociador
+            logging.warning("EL USUARIO NO ESTA ACTIVO")
+            Nel_crack = comandosCliente(topic_transmisor)
+            topic_send="comandos/08/"+str(topic_transmisor)
+            client.publish(topic_send,Nel_crack.NO(),2,False) 
+
+    #SALU CUando el comando es un ALIVE el servidor guarda al usuario en una lista y envia una 
+    #validacion con ACK   
+    if (comando_accion.separa()[0]=="04"):
         logging.debug("Se recibio ALIVE de: "+str(topic))
+        activos.append(topic)
+        acknowledge = comandosCliente(topic)
+        topic_send="comandos/08/"+str(topic)
+        client.publish(topic_send,acknowledge.ack(),2,False)
+
     else:
         logging.debug("Comando no encontrado")
     time.sleep(5)
 
 #SALU Configuracion inicial de logging
 logging.basicConfig(
-    level = logging.INFO, 
+    level = logging.DEBUG, 
     format = '[%(levelname)s] (%(threadName)-10s) %(message)s'
     )
 
@@ -218,8 +246,8 @@ logging.basicConfig(
 client = MQTTconfig(clean_session=True)
 rc = client.run()   #SALU Corre la congiduracion 
 
-first =b'\x01$201700722$4000'
-client.publish("comandos/08/201700722",first,2,False)
+#first =b'\x01$201700722$4000'
+#client.publish("comandos/08/201700722",first,2,False)
 
 #*********** Suscripciones del servidor ******************
 #SALU hace las suscripciones automaticas del servidor
@@ -234,10 +262,10 @@ comandos.subComandos()
 client.loop_start()	#COn esto hacemos que las sub funcionen
 #SALU El thread de MQTT queda en el fondo, mientras en el main loop hacemos otra cosa
 
-time.sleep(5)
+#time.sleep(5)
 try:
     while True:
-        logging.debug("Hilo principal, Aqui puede ejecutarse mas comando si se deseea")
+        logging.debug("Esperando comando...")
         time.sleep(5)
         	
 except KeyboardInterrupt:
