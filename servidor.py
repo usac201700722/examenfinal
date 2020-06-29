@@ -238,7 +238,7 @@ def comandosEntrada(dato):
 
 #SALU Configuracion inicial de logging
 logging.basicConfig(
-    level = logging.DEBUG, 
+    level = logging.INFO, 
     format = '[%(levelname)s] (%(threadName)-10s) %(message)s'
     )
 
