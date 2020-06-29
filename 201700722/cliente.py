@@ -232,26 +232,29 @@ class hiloAudio(object):
         logging.debug(mensaje)       
         logging.info("Reproduciendo nota de voz...")
         os.system('aplay Desencriptado_recibidoEncriptado.wav')
+
+
         
- #clase y comentario hecho por ARMCH
- #esta clase consta de dos hilos 
- #un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
- #otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
+#clase y comentario hecho por ARMCH
+#esta clase consta de dos hilos 
+#un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
+#otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
 class hiloTCP(object):
     #ARMCH constructor de la clase , se definen los dos hilos de la clase
-    
     def __init__(self, SERVER_IP):
         self.SERVER_IP=SERVER_IP
         self.hiloConexion=threading.Thread(name = 'Conexion por TCP',
                         target = hiloTCP.conexionTCP,
                         args = (self,self.SERVER_IP),
-                        daemon = True
+                        daemon = False
                         )
+    
         self.hiloConexionRecibir=threading.Thread(name = 'Recibiendo archivo de audio',
                         target = hiloTCP.conexionTCPrecibir,
                         args = (self,self.SERVER_IP),
                         daemon = False
                         )
+    
     #ARMCH este metodo se encarga de enviar la nota de voz del cliente/servidor
     def conexionTCP(self, SERVER_IP):
         self.SERVER_IP   = '167.71.243.238'
@@ -274,9 +277,6 @@ class hiloTCP(object):
                 sock.send(l)
                 l=archivo.read(BUFFER_SIZE)
             archivo.close()
-            logging.debug("Nota de voz enviada satisfactoriamente")
-            first =b'\x01$201700722$4000'
-            client.publish("comandos/08/201700722",first,2,False)
             sock.close()
         except ConnectionRefusedError:
             logging.error("El servidor ha rechazado la conexion, intente hacerlo otra vez")
@@ -286,7 +286,6 @@ class hiloTCP(object):
         SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
         BUFFER_SIZE = 64 * 1024
-
         sock = socket.socket()
         sock.connect((SERVER_ADDR, SERVER_PORT))
 
@@ -301,13 +300,11 @@ class hiloTCP(object):
             logging.info("Recepcion de archivo finalizada")
 
         finally:
-            logging.debug('Conexion al servidor finalizada')
-            
-            Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")
-            #os.system('aplay Desencriptado_recibidoEncriptado.wav')
-            sock.close()
+            logging.debug('Conexion al servidor finalizada')          
+            Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")                      
             hilo = hiloAudio("topic")
             hilo.hiloRecibidor.start()
+            sock.close()
 
 #ARMCH aqui se ejecutaran los comandos de negociacion que le entren al cliente
 def comandos_funcion(dato_entrada):
@@ -320,7 +317,7 @@ def comandos_funcion(dato_entrada):
         logging.debug("Se envio ALIVE al servidor")
     elif (comando_accion.separa()[0]=="06"):
         logging.info("Se recibio OK del servidor para enviar el archivo")
-        #time.sleep(10)
+        #time.sleep(20)
         conexion= hiloTCP(SERVER_IP)
         conexion.hiloConexion.start()
     else:

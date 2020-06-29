@@ -1,11 +1,12 @@
-import paho.mqtt.client as mqtt
-import logging
-import time
-import os 
-import socket
-import threading #Concurrencia con hilos
-from brokerdata import *
-from comandos import * 
+import paho.mqtt.client as mqtt #SALU libreria para crear un cliente MQTT
+import logging                  #SALU Libreria para trabajar con niveles de logging
+import time                     #SALU LIbreria para realizar pausas de tiempo
+import os                       #SALU LIbreria para usar comandos de bash en python
+import socket                   #SALU Libreria para abrir un socket TCP
+import threading                #SALU Concurrencia con hilos
+from brokerdata import *        #SALU Datos con credenciales y constantes
+from comandos import *          #SALU metodos para los comandos para negociacion
+
 '''
 Classe y comentario hecho por: SALU
 en esta clase se configura al cliente MQTT, realizando diferentes llamadas
@@ -113,9 +114,7 @@ class hiloTCP(object):
     def conexionTCP(self):  
         #SALU Crea un socket TCP
         okey = comandosCliente(self.topic)
-        logging.debug(okey.OK())
         topic_send="comandos/08/"+str(self.topic_negociador)
-        print(topic_send)
         client.publish(topic_send,okey.OK(),2,False)     
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #SALU Bind the socket to the port
@@ -159,11 +158,10 @@ class hiloTCP(object):
                 connection.close()
     #SALU este metodo se encarga de enviar el archivo de audio a un cliente por medio de un socket TCP
     def conexionTCPenvio(self): 
-        print(self.topic)
         SERVER_PORT = 9808 
         objeto= comandosCliente(self.topic)
         fsize = os.stat('recibido.wav').st_size
-        
+
         client.publish("comandos/08/"+str(self.topic),objeto.fileReceive(fsize),2,False)
         server_socket = socket.socket()
         server_socket.bind((SERVER_ADDR, SERVER_PORT))
@@ -181,12 +179,14 @@ class hiloTCP(object):
                 conn.close()
                 server_socket.close()
                 print("\n\nArchivo enviado a: ", addr)               
-                print("Cerrando el servidor...")
-                time.sleep(2)
-                bandera = False
+                #time.sleep(2)
+                bandera= False
+
+
         finally:
-            print("Cerrando...")
+            logging.warning("Cerrando el servidor...")
             server_socket.close()
+            
 
 '''
 Método y comentario hecho por: SALU
@@ -199,11 +199,10 @@ def comandosEntrada(dato):
     topic_transmisor = comando_accion.separa()[2]
     
     if (comando_accion.separa()[0]=="03"):
-        logging.info("Habilitando socket TCP para recepcion y envio de archivo")                  
+        logging.info("Se recibio FTR del cliente: "+str(topic_transmisor))                  
         recibe = hiloTCP(topic,topic_transmisor)
         recibe.hiloRecibidor.start()
-    elif (comando_accion.separa()[0]=="04"):
-        logging.debug("**************************************")            
+    elif (comando_accion.separa()[0]=="04"):           
         logging.debug("Se recibio ALIVE de: "+str(topic))
     else:
         logging.debug("Comando no encontrado")
