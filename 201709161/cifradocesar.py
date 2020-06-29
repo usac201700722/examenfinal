@@ -36,9 +36,3 @@ def decrypt(letras,n,cifrado):
         else:
             text_decrypt += caracter #HANC Si no se encuentra el caracter simplemente lo agrega
     return text_decrypt
-
-frase = "hola a todos, bienvenidos al curso de python 3 desde cero orientado por la cartilla $"
-frase_cifrada = crypt_cesar(letras,5,frase)
-frase_decodificada = decrypt(letras,5,frase_cifrada)
-print(frase_cifrada)
-print(frase_decodificada)
