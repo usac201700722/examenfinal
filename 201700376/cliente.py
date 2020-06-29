@@ -76,7 +76,7 @@ class configuracionCLiente(object):
         com=[]
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
-            logging.debug("comandos/08/"+str(i[0]))
+            #logging.debug("comandos/08/"+str(i[0]))
             com.append(i[0])
         return com
     
@@ -91,7 +91,7 @@ class configuracionCLiente(object):
         user = []
         for i in datos:
             client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
-            logging.debug("usuarios/08/"+str(i[0]))
+            #logging.debug("usuarios/08/"+str(i[0]))
             user.append(i[0])
         return user
 
@@ -108,7 +108,7 @@ class configuracionCLiente(object):
         for i in datos:
             client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), self.qos))
             client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), self.qos))
-            logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
+            #logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
             sal.append("comandos/"+str(i[0])+"/S"+str(i[1]))
         return sal
 
@@ -155,6 +155,7 @@ class comandosUsuario(object):
                 
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+                logging.warning("ATENCION: Espere unos segundos en lo que responde el servidor")
 
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
@@ -171,6 +172,7 @@ class comandosUsuario(object):
                 mensaje = comandosCliente(topic_send)
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+                logging.warning("ATENCION: Espere unos segundos en lo que responde el servidor")
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
                 
@@ -196,11 +198,12 @@ class hilos(object):
         self.hiloAlive=threading.Thread(name = 'ALIVE',
                         target = hilos.enviarALIVE,
                         args = (self,self.tiempo),
-                        daemon = False
+                        daemon = True
                         )
 
     #HANC Metodo que envia hilos cada 2 segundos
     def enviarALIVE(self, tiempo=2):
+        
         datos = []
         user = ''
         archivo = open('usuario','r') #HANC Abrir el archivo en modo de LECTURA
@@ -210,9 +213,9 @@ class hilos(object):
         archivo.close() #HANC Cerrar el archivo al finalizar
         for i in datos:
             user = i[0]
-        while True:
-            mensaje = comandosCliente(user)
-            client.publish("comandos/08/"+str(user),mensaje.alive(),1,False)
+        mensaje = comandosCliente(user)
+        while True:           
+            client.publish("comandos/08/"+str(user),mensaje.alive(),2,False)
             time.sleep(self.tiempo)
 
 #comentario y clase hecho por ARMCH
@@ -232,26 +235,29 @@ class hiloAudio(object):
         logging.debug(mensaje)       
         logging.info("Reproduciendo nota de voz...")
         os.system('aplay Desencriptado_recibidoEncriptado.wav')
+
+
         
- #clase y comentario hecho por ARMCH
- #esta clase consta de dos hilos 
- #un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
- #otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
+#clase y comentario hecho por ARMCH
+#esta clase consta de dos hilos 
+#un hilo para enviar los archivos de audio al servidor por medio de una conexion tcp
+#otro hilo se encarga para recibir un archivo de audio del servidor por medio de la conexion tcp
 class hiloTCP(object):
     #ARMCH constructor de la clase , se definen los dos hilos de la clase
-    
     def __init__(self, SERVER_IP):
         self.SERVER_IP=SERVER_IP
         self.hiloConexion=threading.Thread(name = 'Conexion por TCP',
                         target = hiloTCP.conexionTCP,
                         args = (self,self.SERVER_IP),
-                        daemon = True
+                        daemon = False
                         )
+    
         self.hiloConexionRecibir=threading.Thread(name = 'Recibiendo archivo de audio',
                         target = hiloTCP.conexionTCPrecibir,
                         args = (self,self.SERVER_IP),
                         daemon = False
                         )
+    
     #ARMCH este metodo se encarga de enviar la nota de voz del cliente/servidor
     def conexionTCP(self, SERVER_IP):
         self.SERVER_IP   = '167.71.243.238'
@@ -274,9 +280,6 @@ class hiloTCP(object):
                 sock.send(l)
                 l=archivo.read(BUFFER_SIZE)
             archivo.close()
-            logging.debug("Nota de voz enviada satisfactoriamente")
-            first =b'\x01$201700722$4000'
-            client.publish("comandos/08/201700722",first,2,False)
             sock.close()
         except ConnectionRefusedError:
             logging.error("El servidor ha rechazado la conexion, intente hacerlo otra vez")
@@ -286,7 +289,6 @@ class hiloTCP(object):
         SERVER_ADDR = '167.71.243.238'
         SERVER_PORT = 9808
         BUFFER_SIZE = 64 * 1024
-
         sock = socket.socket()
         sock.connect((SERVER_ADDR, SERVER_PORT))
 
@@ -301,30 +303,46 @@ class hiloTCP(object):
             logging.info("Recepcion de archivo finalizada")
 
         finally:
-            logging.debug('Conexion al servidor finalizada')
-            
-            Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")
-            #os.system('aplay Desencriptado_recibidoEncriptado.wav')
-            sock.close()
+            logging.debug('Conexion al servidor finalizada')          
+            Desencriptar(getkey(PASSWORD),"recibidoEncriptado.wav")                      
             hilo = hiloAudio("topic")
             hilo.hiloRecibidor.start()
+            sock.close()
 
 #ARMCH aqui se ejecutaran los comandos de negociacion que le entren al cliente
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
-    logging.debug("Si entro a la funcion")
+
+    #ARMCH si el comando es FRR entonces abre un socket TCP para recibir el archivo
     if (comando_accion.separa()[0]=="02"):
         recibir_audio= hiloTCP(SERVER_IP)
         recibir_audio.hiloConexionRecibir.start()
+
+    #ARMCH el comando ALIVE se envia al servidor, pero tambien le llega al cliente que lo envio
+    #por el topic al que se envio, entonces aqui solo mostramos un mensaje debug que se envio el 
+    #alive al servidor.
     elif (comando_accion.separa()[0]=="04"):
         logging.debug("Se envio ALIVE al servidor")
+    
+    #ARMCH Si el comando es OK, entonces el cliente abre un socket TCP para enviar el archivo
+    #al servidor.
     elif (comando_accion.separa()[0]=="06"):
         logging.info("Se recibio OK del servidor para enviar el archivo")
-        #time.sleep(10)
         conexion= hiloTCP(SERVER_IP)
         conexion.hiloConexion.start()
+    
+    #ARMCH Si el comando es NO, entonces el cliente No abre el socket TCP porque el remitente
+    #no esta conectado.
+    elif (comando_accion.separa()[0]=="07"):
+        logging.error("Se recibio NO del servidor para enviar el archivo")
+        logging.error("El destinatario no esta conectado en este momento")
+    
+    #ARMCH si el comando es un ACK significa que el archivo se envio correctamente ó bien
+    #que el servidor chequeo de manera correcta el alive.
+    elif (comando_accion.separa()[0]=="05"):
+        logging.debug("Se recibio ACK del servidor")
     else:
-        pass
+        pass    #ARMCH Por si llega un comando erroneo por cualquier razon que no haga nada
 
 #SALU Configuracion inicial de logging
 logging.basicConfig(
@@ -347,18 +365,20 @@ usuarios = configuracionCLiente(USER_FILENAME,2)
 lista_user=usuarios.subUsuarios()
 salas = configuracionCLiente(SALAS_FILENAME,2)
 lista_sal = salas.subSalas()
-logging.debug(lista_com) #muestra el usuario
-logging.debug(lista_user)
-logging.debug(lista_sal)
 lista_comandos_generales=[]
 lista_comandos_generales.append("comandos/08/"+str(lista_user[0]))
 lista_comandos_generales.extend(lista_sal)
 logging.debug(lista_comandos_generales)
 #************************************************************************
-
-hilo_enviar_Alive= hilos(2)
-#hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
 client.loop_start()
+
+#SALU comienza el hilo de ALIVE, para que envie cada cierto tiempo el alive al servidor
+#OJO: usamos 5 segundos y no 2, porque mientras mas rápido se envien los alives al servidor
+#mas se tarda toda la negociacion, y esto puede causar problemas en la transmision de audios.
+hilo_enviar_Alive= hilos(5)
+hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
+
+
 #Loop principal:
 try:
     while True: 
@@ -374,8 +394,11 @@ try:
         |        i. Duración (Segundos)                 |
         |    b. Enviar a sala    --> PRESIONE "2b"      |
         |        i. Duración (Segundos)                 |
-        |3. Salir del sistema --> PRESIONE "exit/EXIT"  |
-        --------------------------------------------------
+        |3. Salir del sistema --> PRESIONE "exit/EXIT"
+        |                                               |
+        | NOTA:La transmision de audios es un poco lenta|
+        | por favor tenga paciencia.                    |
+        -------------------------------------------------
         ''') 
         
         dato_usuario = input("Ingrese el comando: ")    #ARMCH el usuario ingresa un comando

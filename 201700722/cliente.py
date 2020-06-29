@@ -76,7 +76,7 @@ class configuracionCLiente(object):
         com=[]
         for i in datos:
             client.subscribe(("comandos/08/"+str(i[0]), self.qos))
-            logging.debug("comandos/08/"+str(i[0]))
+            #logging.debug("comandos/08/"+str(i[0]))
             com.append(i[0])
         return com
     
@@ -91,7 +91,7 @@ class configuracionCLiente(object):
         user = []
         for i in datos:
             client.subscribe(("usuarios/08/"+str(i[0]), self.qos))
-            logging.debug("usuarios/08/"+str(i[0]))
+            #logging.debug("usuarios/08/"+str(i[0]))
             user.append(i[0])
         return user
 
@@ -108,7 +108,7 @@ class configuracionCLiente(object):
         for i in datos:
             client.subscribe(("salas/"+str(i[0])+"/S"+str(i[1]), self.qos))
             client.subscribe(("comandos/"+str(i[0])+"/S"+str(i[1]), self.qos))
-            logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
+            #logging.debug("salas/"+str(i[0])+"/S"+str(i[1]))
             sal.append("comandos/"+str(i[0])+"/S"+str(i[1]))
         return sal
 
@@ -155,6 +155,7 @@ class comandosUsuario(object):
                 
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+                logging.warning("ATENCION: Espere unos segundos en lo que responde el servidor")
 
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
@@ -171,6 +172,7 @@ class comandosUsuario(object):
                 mensaje = comandosCliente(topic_send)
                 client.publish("comandos/08/"+str(topic_send),mensaje.fileTransfer(lista_user[0],size),1,False)
                 Encriptar(getkey(PASSWORD),"ultimoAudio.wav")
+                logging.warning("ATENCION: Espere unos segundos en lo que responde el servidor")
             else:
                 logging.error("¡La duracion debe ser menor a 30 seg!")
                 
@@ -196,11 +198,12 @@ class hilos(object):
         self.hiloAlive=threading.Thread(name = 'ALIVE',
                         target = hilos.enviarALIVE,
                         args = (self,self.tiempo),
-                        daemon = False
+                        daemon = True
                         )
 
     #HANC Metodo que envia hilos cada 2 segundos
     def enviarALIVE(self, tiempo=2):
+        
         datos = []
         user = ''
         archivo = open('usuario','r') #HANC Abrir el archivo en modo de LECTURA
@@ -210,9 +213,9 @@ class hilos(object):
         archivo.close() #HANC Cerrar el archivo al finalizar
         for i in datos:
             user = i[0]
-        while True:
-            mensaje = comandosCliente(user)
-            client.publish("comandos/08/"+str(user),mensaje.alive(),1,False)
+        mensaje = comandosCliente(user)
+        while True:           
+            client.publish("comandos/08/"+str(user),mensaje.alive(),2,False)
             time.sleep(self.tiempo)
 
 #comentario y clase hecho por ARMCH
@@ -309,19 +312,37 @@ class hiloTCP(object):
 #ARMCH aqui se ejecutaran los comandos de negociacion que le entren al cliente
 def comandos_funcion(dato_entrada):
     comando_accion = comandosServidor(str(dato_entrada))
-    logging.debug("Si entro a la funcion")
+
+    #ARMCH si el comando es FRR entonces abre un socket TCP para recibir el archivo
     if (comando_accion.separa()[0]=="02"):
         recibir_audio= hiloTCP(SERVER_IP)
         recibir_audio.hiloConexionRecibir.start()
+
+    #ARMCH el comando ALIVE se envia al servidor, pero tambien le llega al cliente que lo envio
+    #por el topic al que se envio, entonces aqui solo mostramos un mensaje debug que se envio el 
+    #alive al servidor.
     elif (comando_accion.separa()[0]=="04"):
         logging.debug("Se envio ALIVE al servidor")
+    
+    #ARMCH Si el comando es OK, entonces el cliente abre un socket TCP para enviar el archivo
+    #al servidor.
     elif (comando_accion.separa()[0]=="06"):
         logging.info("Se recibio OK del servidor para enviar el archivo")
-        #time.sleep(20)
         conexion= hiloTCP(SERVER_IP)
         conexion.hiloConexion.start()
+    
+    #ARMCH Si el comando es NO, entonces el cliente No abre el socket TCP porque el remitente
+    #no esta conectado.
+    elif (comando_accion.separa()[0]=="07"):
+        logging.error("Se recibio NO del servidor para enviar el archivo")
+        logging.error("El destinatario no esta conectado en este momento")
+    
+    #ARMCH si el comando es un ACK significa que el archivo se envio correctamente ó bien
+    #que el servidor chequeo de manera correcta el alive.
+    elif (comando_accion.separa()[0]=="05"):
+        logging.debug("Se recibio ACK del servidor")
     else:
-        pass
+        pass    #ARMCH Por si llega un comando erroneo por cualquier razon que no haga nada
 
 #SALU Configuracion inicial de logging
 logging.basicConfig(
@@ -344,18 +365,20 @@ usuarios = configuracionCLiente(USER_FILENAME,2)
 lista_user=usuarios.subUsuarios()
 salas = configuracionCLiente(SALAS_FILENAME,2)
 lista_sal = salas.subSalas()
-logging.debug(lista_com) #muestra el usuario
-logging.debug(lista_user)
-logging.debug(lista_sal)
 lista_comandos_generales=[]
 lista_comandos_generales.append("comandos/08/"+str(lista_user[0]))
 lista_comandos_generales.extend(lista_sal)
 logging.debug(lista_comandos_generales)
 #************************************************************************
-
-hilo_enviar_Alive= hilos(2)
-#hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
 client.loop_start()
+
+#SALU comienza el hilo de ALIVE, para que envie cada cierto tiempo el alive al servidor
+#OJO: usamos 5 segundos y no 2, porque mientras mas rápido se envien los alives al servidor
+#mas se tarda toda la negociacion, y esto puede causar problemas en la transmision de audios.
+hilo_enviar_Alive= hilos(5)
+hilo_enviar_Alive.hiloAlive.start()        #SALU se activa el ALIVE
+
+
 #Loop principal:
 try:
     while True: 
@@ -371,8 +394,11 @@ try:
         |        i. Duración (Segundos)                 |
         |    b. Enviar a sala    --> PRESIONE "2b"      |
         |        i. Duración (Segundos)                 |
-        |3. Salir del sistema --> PRESIONE "exit/EXIT"  |
-        --------------------------------------------------
+        |3. Salir del sistema --> PRESIONE "exit/EXIT"
+        |                                               |
+        | NOTA:La transmision de audios es un poco lenta|
+        | por favor tenga paciencia.                    |
+        -------------------------------------------------
         ''') 
         
         dato_usuario = input("Ingrese el comando: ")    #ARMCH el usuario ingresa un comando

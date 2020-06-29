@@ -17,12 +17,15 @@ class comandosCliente(object):
         tamArchivo=tamArchivo.encode()
         trama= FTR+self.SEP+Destino+self.SEP+topic_enviador+self.SEP+tamArchivo
         return trama
-    def alive(self):        #SALU Trama para ALIVE
+    def alive(self, extra=0):        #SALU Trama para ALIVE
         ALIVE=b'\x04'
         Destino = self.Dest
         Destino=Destino.encode()
-        trama= ALIVE+self.SEP+Destino
+        extra_1 = str(extra)
+        extra_1=extra_1.encode()
+        trama= ALIVE+self.SEP+Destino+self.SEP+extra_1
         return trama
+        
     def fileReceive(self, File_size=0):     #SALU Trama para FRR
         FRR=b'\x02'
         Destino = self.Dest
