@@ -1,0 +1,50 @@
+Examen final del curso de proyectos 
+computacionales orientados a I.E.
+------------------------------------------
+Impartida por el Ing. Ivan Morales 
+Aux. Otto Sierra
+
+GRUPO #8:
+Huitzitzil Ajpu Noj Costop	201700376
+Sergio Augusto León Urrutia 	201700722
+Alex Ronaldo Mendoza CHonay	201709161
+
+-------------------------------------------
+
+NOTAS IMPORTANTES:
+
+1- El tiempo de ALIVE no lo hicimos de 2 segundos,
+porque la negociacion se hacia muy lenta entre el
+cliente y servidor, aumentanto el tiempo entre ALIVEs
+este problema mejora en gran medida.
+
+2- Al recibir un audio el cliente no cierra el socket
+TCP inmediatamente (No sabemos por que), entonces hay
+que esperar un tiempo (1 min y 30s aprox) para que el
+el puerto se libere, de lo contrario aparece una excepcion
+de "ConnectionRefused". la otra opcion es cerrar y volver abrir
+el ultimo cliente que recibio un audio (El servidor no es
+el problema)
+
+3- El envio a la salas debido al mismo problema anterior
+no deja que los demas clientes de la sala reciban el audio
+por que se levanta la excepcion "ConnectionRefused",
+por lo tanto el primer cliente que recibe el FRR es el que 
+recibe el audio.
+
+4- Si se desean ver todos los comandos de la negociacion
+hay que poner el logging.INFO en logging.DEBUG
+
+
+------------------------------------------------------------
+Agradecemos al Ing. Ivan Morales por su esfuerzo y dedicacion
+durante este curso de escuela de vacaciones, los 3 integrantes
+del grupo llegamos a la conclusion que ha sido uno de los mejores
+catedraticos que hemos tenido, pocos se esfuerzan por dar tan bien
+sus clases, lo motivamos para que siga dando catedras de esa manera.
+
+Agradecemos al Aux. Otto Sierra por su apoyo fuera del horario de
+clases (por correo electrónico) porque fue de mucha ayuda resolviendo
+dudas con respecto a las clases de python e hilos, de no ser por él
+muchas cosas deeste proyecto no hubieran funcionado.
+
